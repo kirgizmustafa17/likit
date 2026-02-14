@@ -410,6 +410,16 @@ body::before {
   color: rgba(52, 211, 153, 0.5);
 }
 
+.clickable {
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--transition);
+}
+
+.clickable:hover {
+  color: rgba(52, 211, 153, 0.8);
+}
+
 .transaction-empty {
   padding: 40px 24px;
   text-align: center;

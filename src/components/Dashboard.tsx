@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Droplets, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
 import { Transaction } from '@/lib/types';
 import { getTransactions, addTransaction, updateTransaction, deleteTransaction, markTransactionCompleted } from '@/lib/actions';
-import { calculateDailyBalances, getPeriodRange, formatCurrency } from '@/lib/utils';
+import { calculateDailyBalances, getPeriodRange, formatCurrency, getNow, getTodayStr } from '@/lib/utils';
 import CashFlowChart from './CashFlowChart';
 import TransactionForm from './TransactionForm';
 import TransactionList from './TransactionList';
@@ -32,16 +32,48 @@ export default function Dashboard() {
         }
     }, []);
 
-    useEffect(() => {
-        loadTransactions();
+    // Auto-complete past-due transactions
+    const autoCompleteTransactions = useCallback(async (txns: Transaction[]) => {
+        const today = getTodayStr();
+        const pastDue = txns.filter(t => !t.is_completed && t.transaction_date < today);
+
+        if (pastDue.length === 0) return;
+
+        for (const t of pastDue) {
+            try {
+                await markTransactionCompleted(t.id, t.transaction_date, t.amount);
+            } catch (error) {
+                console.error('Auto-complete error:', error);
+            }
+        }
+
+        // Reload after auto-completing
+        await loadTransactions();
     }, [loadTransactions]);
 
+    useEffect(() => {
+        loadTransactions().then(() => {
+            // Run after initial load via a separate effect
+        });
+    }, [loadTransactions]);
+
+    // Trigger auto-complete when transactions change
+    useEffect(() => {
+        if (!loading && transactions.length > 0) {
+            const today = new Date().toISOString().split('T')[0];
+            const hasPastDue = transactions.some(t => !t.is_completed && t.transaction_date < today);
+            if (hasPastDue) {
+                autoCompleteTransactions(transactions);
+            }
+        }
+    }, [loading, transactions, autoCompleteTransactions]);
+
     // Calculate period range
-    const { start: periodStart, end: periodEnd, label: periodLabel } = getPeriodRange(periodOffset);
+    const { chartStart: periodChartStart, chartEnd: periodChartEnd, label: periodLabel } = getPeriodRange(periodOffset);
 
     // For "All" view, find min/max dates across all transactions
-    let chartStart = periodStart;
-    let chartEnd = periodEnd;
+    let chartStart = periodChartStart;
+    let chartEnd = periodChartEnd;
     let displayLabel = periodLabel;
 
     if (isAllView && transactions.length > 0) {
@@ -64,7 +96,7 @@ export default function Dashboard() {
 
     // Calculate summary stats
     const currentBalance = chartData.length > 0 ? chartData[chartData.length - 1].balance : 0;
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getTodayStr();
     const todayData = chartData.find(d => d.date === todayStr);
     const todayBalance = todayData ? todayData.balance : currentBalance;
 
@@ -212,9 +244,21 @@ export default function Dashboard() {
             {/* Chart */}
             <CashFlowChart data={chartData} periodLabel={displayLabel} />
 
-            {/* Transaction List */}
+            {/* Transaction List — filter to current period for display */}
             <TransactionList
-                transactions={transactions}
+                transactions={(() => {
+                    // Always show all planned transactions
+                    const planned = transactions.filter(t => !t.is_completed);
+                    // Show completed only within the chart's date range
+                    const startStr = `${chartStart.getFullYear()}-${String(chartStart.getMonth() + 1).padStart(2, '0')}-${String(chartStart.getDate()).padStart(2, '0')}`;
+                    const endStr = `${chartEnd.getFullYear()}-${String(chartEnd.getMonth() + 1).padStart(2, '0')}-${String(chartEnd.getDate()).padStart(2, '0')}`;
+                    const completed = transactions.filter(t => {
+                        if (!t.is_completed) return false;
+                        const effectiveDate = t.completed_date || t.transaction_date;
+                        return effectiveDate >= startStr && effectiveDate <= endStr;
+                    });
+                    return [...planned, ...completed];
+                })()}
                 onEdit={openEditForm}
                 onDelete={handleDeleteTransaction}
                 onMarkComplete={openCompleteModal}

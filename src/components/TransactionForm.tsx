@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Transaction } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, getTodayStr } from '@/lib/utils';
 
 interface TransactionFormProps {
     isOpen: boolean;
@@ -42,7 +42,7 @@ export default function TransactionForm({
         } else {
             setTitle('');
             setAmount('');
-            setDate(new Date().toISOString().split('T')[0]);
+            setDate(getTodayStr());
             setType('expense');
             setIsCompleted(false);
         }

@@ -1,6 +1,7 @@
 'use client';
 
-import { Edit3, Trash2, CheckCircle2, Clock, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Edit3, Trash2, CheckCircle2, Clock, ArrowUpCircle, ArrowDownCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { Transaction } from '@/lib/types';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
 
@@ -17,6 +18,8 @@ export default function TransactionList({
     onDelete,
     onMarkComplete,
 }: TransactionListProps) {
+    const [showCompleted, setShowCompleted] = useState(false);
+
     if (transactions.length === 0) {
         return (
             <div className="transaction-list">
@@ -24,7 +27,7 @@ export default function TransactionList({
                     <h2>İşlemler</h2>
                 </div>
                 <div className="transaction-empty">
-                    <p>Henüz işlem bulunmuyor.</p>
+                    <p>Bu dönemde işlem bulunmuyor.</p>
                 </div>
             </div>
         );
@@ -61,11 +64,15 @@ export default function TransactionList({
 
             {completed.length > 0 && (
                 <div className="transaction-section">
-                    <h3 className="transaction-section-title completed-title">
+                    <h3
+                        className="transaction-section-title completed-title clickable"
+                        onClick={() => setShowCompleted(!showCompleted)}
+                    >
+                        {showCompleted ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                         <CheckCircle2 size={14} />
                         Tamamlanan ({completed.length})
                     </h3>
-                    {completed.map((t) => (
+                    {showCompleted && completed.map((t) => (
                         <TransactionItem
                             key={t.id}
                             transaction={t}

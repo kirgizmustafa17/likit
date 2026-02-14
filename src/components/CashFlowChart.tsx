@@ -11,7 +11,7 @@ import {
     ReferenceLine,
 } from 'recharts';
 import { DailyBalance } from '@/lib/types';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, getNow } from '@/lib/utils';
 import { format, parseISO, isToday } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
@@ -55,7 +55,7 @@ export default function CashFlowChart({ data, periodLabel }: CashFlowChartProps)
     const padding = Math.max(Math.abs(maxBalance - minBalance) * 0.1, 1000);
 
     // Find today's date index
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const todayStr = format(getNow(), 'yyyy-MM-dd');
     const todayIndex = data.findIndex(d => d.date === todayStr);
 
     // Determine gradient ID based on min balance

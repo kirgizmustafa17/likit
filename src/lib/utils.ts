@@ -2,6 +2,25 @@ import { format, addDays, startOfDay, isAfter, isBefore, isEqual, parseISO, subM
 import { tr } from 'date-fns/locale';
 import { Transaction, DailyBalance } from './types';
 
+const TIMEZONE_OFFSET_MS = 3 * 60 * 60 * 1000; // UTC+3
+
+/**
+ * Returns a Date object adjusted to UTC+3 (Turkey time).
+ */
+export function getNow(): Date {
+    const now = new Date();
+    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+    return new Date(utc + TIMEZONE_OFFSET_MS);
+}
+
+/**
+ * Returns today's date string in 'yyyy-MM-dd' format, in UTC+3.
+ */
+export function getTodayStr(): string {
+    const now = getNow();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
 export function formatCurrency(amount: number): string {
     return new Intl.NumberFormat('tr-TR', {
         style: 'currency',
@@ -20,12 +39,19 @@ export function formatShortDate(date: string): string {
 }
 
 /**
- * Get the period start (15th of previous month) and end (14th of next month)
- * relative to a given reference date.
+ * Get the period range and chart display range.
+ * Period: 15th of month X → 14th of month X+1 (1 month)
+ * Chart:  13th of month X → 16th of month X+1 (period ± 2 days for context)
  * Period offset: 0 = current period, -1 = previous, +1 = next
  */
-export function getPeriodRange(periodOffset: number = 0): { start: Date; end: Date; label: string } {
-    const now = new Date();
+export function getPeriodRange(periodOffset: number = 0): {
+    start: Date;
+    end: Date;
+    chartStart: Date;
+    chartEnd: Date;
+    label: string;
+} {
+    const now = getNow();
     const currentDay = now.getDate();
 
     // Determine the "current" period's start month
@@ -42,13 +68,17 @@ export function getPeriodRange(periodOffset: number = 0): { start: Date; end: Da
     periodStartMonth = addMonths(periodStartMonth, periodOffset);
 
     const start = setDate(startOfDay(periodStartMonth), 15);
-    // End is 14th of the month AFTER start + 1 month = start + ~59 days
-    const endMonth = addMonths(periodStartMonth, 2);
+    // End is 14th of the NEXT month (1-month period)
+    const endMonth = addMonths(periodStartMonth, 1);
     const end = setDate(startOfDay(endMonth), 14);
+
+    // Chart padding: ±2 days for context
+    const chartStart = addDays(start, -2);
+    const chartEnd = addDays(end, 2);
 
     const label = `${format(start, 'd MMM yyyy', { locale: tr })} – ${format(end, 'd MMM yyyy', { locale: tr })}`;
 
-    return { start, end, label };
+    return { start, end, chartStart, chartEnd, label };
 }
 
 /**
