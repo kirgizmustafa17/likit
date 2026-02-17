@@ -59,6 +59,14 @@ export default function TransactionForm({
                 transaction_date: date,
                 type,
                 is_completed: isCompleted,
+                ...(isCompleted && {
+                    completed_date: date,
+                    completed_amount: parseFloat(amount),
+                }),
+                ...(!isCompleted && {
+                    completed_date: null,
+                    completed_amount: null,
+                }),
             });
         } else {
             onSubmit({
