@@ -41,7 +41,7 @@ export default function Dashboard() {
 
         for (const t of pastDue) {
             try {
-                await markTransactionCompleted(t.id, t.transaction_date, t.amount);
+                await markTransactionCompleted(t.id, today, t.amount);
             } catch (error) {
                 console.error('Auto-complete error:', error);
             }
@@ -60,7 +60,7 @@ export default function Dashboard() {
     // Trigger auto-complete when transactions change
     useEffect(() => {
         if (!loading && transactions.length > 0) {
-            const today = new Date().toISOString().split('T')[0];
+            const today = getTodayStr();
             const hasPastDue = transactions.some(t => !t.is_completed && t.transaction_date < today);
             if (hasPastDue) {
                 autoCompleteTransactions(transactions);
