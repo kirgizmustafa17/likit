@@ -8,14 +8,15 @@ Likit, Next.js (App Router), Supabase (PostgreSQL), Tailwind CSS ve Recharts kul
 
 Güvenilir, kesintisiz ve net bir nakit akışı takibi sunmak; veritabanının ve uygulamanın her zaman erişilebilir kalmasını sağlamak.
 
-## Current Milestone: v1.0 Supabase Keep-Alive via Vercel Cron
+## Current Milestone: v1.1 Database Cleanup & Migration Simplification
 
-**Goal:** Supabase'in inaktivite nedeniyle projeyi askıya almasını (paused) önlemek için Vercel Cron ve Next.js API Route tabanlı otomatik ping mekanizması kurmak.
+**Goal:** Supabase'deki geçmiş/test kayıtlarını temizlemek, askıdaki veritabanını aktif hale getirmek ve migration/şema yönetim adımlarını tek bir standartta sadeleştirmek.
 
 **Target features:**
-- `/api/keep-alive` Next.js Route Handler oluşturulması (hafif Supabase sorgusu)
-- `vercel.json` ile günde 1 kez otomatik tetiklenecek Cron Job yapılandırması
-- Endpoint testi ve doğrulama
+- Askıya alınmış Supabase projesini (`nakit-akisi`) restore edip aktif duruma getirmek
+- `likit_transactions` tablosundaki geçmiş/test kayıtlarını güvenle temizlemek (truncate/reset)
+- Veritabanı şemasını ve migration adımlarını sadeleştirip standart bir yapıya (`supabase/migrations/`) kavuşturmak
+- Şema dosyalarını, RLS ve indeksleri modernize etmek
 
 ## Requirements
 
@@ -24,30 +25,32 @@ Güvenilir, kesintisiz ve net bir nakit akışı takibi sunmak; veritabanının 
 - [x] Temel gelir/gider listeleme ve filtreleme
 - [x] İşlem ekleme, silme, güncelleme ve tamamlama
 - [x] Nakit akışı grafiği (Recharts) ve periyot navigasyonu
+- [x] **v1.0**: Supabase Keep-Alive via Vercel Cron (`/api/keep-alive` ve `vercel.json`)
 
 ### Active
 
-- [ ] **CRON-01**: `/api/keep-alive` route handler'ı Supabase'e hafif bir sorgu (`select id limit 1`) atmalıdır.
-- [ ] **CRON-02**: `vercel.json` içerisinde günde 1 kez (örn. `0 5 * * *`) `/api/keep-alive` yolunu tetikleyen Vercel Cron konfigürasyonu tanımlanmalıdır.
-- [ ] **CRON-03**: Endpoint yanıtı ve hata yönetimi düzgün yapılandırılmalı, yerel ve Vercel ortamında test edilmelidir.
+- [ ] **DB-01**: Askıdaki `nakit-akisi` (`xwggnghdazogaxcmunci`) Supabase projesini restore edip bağlantıyı doğrulamak.
+- [ ] **DB-02**: `likit_transactions` tablosundaki eski/test veritabanı kayıtlarını sıfırlamak (TRUNCATE).
+- [ ] **DB-03**: Veritabanı şema ve migration adımlarını sadeleştirerek standart bir yapıya dönüştürmek (idempotent DDL, net RLS ve indeksler).
+- [ ] **DB-04**: Proje içi veritabanı yönetim adımlarını dokümante edip Next.js uygulamasının ve keep-alive servisinin sorunsuz çalıştığını doğrulamak.
 
 ### Out of Scope
 
-- Harici ücretli monitor servisleri (Cron-job.org, UptimeRobot vb. harici hesap gerektiren araçlar; her şey repo içinde çözülecek)
-- Supabase Pro plana geçiş maliyeti
+- Harici ücretli monitor servisleri (Cron-job.org vb. harici hesap gerektiren servisler)
+- Supabase Pro plana geçiş
 
 ## Context
 
 - **Frontend / Fullstack:** Next.js 16 (App Router), React 19, Tailwind CSS 4
-- **Database:** Supabase (PostgreSQL)
+- **Database:** Supabase (PostgreSQL - Project Ref: `xwggnghdazogaxcmunci`)
 - **Deployment:** Vercel
-- **Kısıt:** Supabase ücretsiz planında 7 gün işlem yapılmazsa proje donduruluyor. Vercel Hobby planında günde 1 cron job ücretsiz sunuluyor.
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | Next.js API Route + Vercel Cron | Proje halihazırda Vercel üzerinde barındığı için üçüncü parti bir araç veya ek hesap açmadan repo içinde sıfır maliyetle çalışır | ✓ Good |
+| Standart Supabase Migrations Klasörü | Ham dağınık SQL yerine standart `supabase/migrations/` ve sadeleştirilmiş tek kaynak DDL yapısı | ✓ Good |
 
 ## Evolution
 
@@ -67,4 +70,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-16 after starting Milestone v1.0*
+*Last updated: 2026-09-16 after starting Milestone v1.1*

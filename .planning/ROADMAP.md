@@ -1,19 +1,26 @@
-# Roadmap: Milestone v1.0 Supabase Keep-Alive
+# Roadmap: Milestone v1.1 Database Cleanup & Migration Simplification
 
 ## Proposed Roadmap
 
-**1 phase** | **3 requirements mapped** | All covered ✓
+**2 phases** | **4 requirements mapped** | All covered ✓
 
 | # | Phase | Goal | Requirements | Success Criteria |
 |---|-------|------|--------------|------------------|
-| 1 | Supabase Keep-Alive via Vercel Cron | Vercel Cron ve Next.js API route entegrasyonu ile Supabase'in uykuya geçmesini önlemek | CRON-01, CRON-02, CRON-03 | 3 |
+| 1 | Database Restoration & Records Cleanup | Projeyi restore etmek ve geçmiş test verilerini temizlemek | DB-01, DB-02 | 2 |
+| 2 | Migration Architecture Simplification | Migration ve şema yapısını modernize ve sade hale getirmek | DB-03, DB-04 | 2 |
 
 ### Phase Details
 
-**Phase 1: Supabase Keep-Alive via Vercel Cron**
-- **Goal:** Vercel Cron ve Next.js API Route entegrasyonu ile Supabase veritabanına periyodik hafif sorgu göndererek projenin askıya alınmasını kalıcı olarak önlemek.
-- **Requirements:** CRON-01, CRON-02, CRON-03
+**Phase 1: Database Restoration & Records Cleanup**
+- **Goal:** Askıya alınmış Supabase projesini ayağa kaldırmak ve `likit_transactions` tablosundaki eski verileri silmek.
+- **Requirements:** DB-01, DB-02
 - **Success criteria:**
-  1. `src/app/api/keep-alive/route.ts` dosyası oluşturulmuş ve `likit_transactions` tablosuna hafif sorgu atan Route Handler yazılmış olmalı.
-  2. Kök dizinde `vercel.json` oluşturulmuş ve her gün `/api/keep-alive` endpoint'ini çalıştıran Vercel Cron konfigürasyonu tanımlanmış olmalı.
-  3. `npm run build` veya route testi hatasız geçmeli, Next.js derleme kontrolü başarılı olmalı.
+  1. `xwggnghdazogaxcmunci` projesi `ACTIVE_HEALTHY` durumuna geçmiş olmalı.
+  2. `likit_transactions` tablosundaki kayıt sayısı 0 olmalı.
+
+**Phase 2: Migration Architecture Simplification**
+- **Goal:** Veritabanı şemasını ve migration adımlarını sade, anlaşılır ve yeniden üretilebilir kılmak.
+- **Requirements:** DB-03, DB-04
+- **Success criteria:**
+  1. Standart `supabase/migrations/` yapısı altında sadeleştirilmiş şema dosyası oluşturulmuş olmalı.
+  2. README ve veritabanı kurulum adımları tek adıma indirgenmeli, Next.js derlemesi hatasız çalışmalı.

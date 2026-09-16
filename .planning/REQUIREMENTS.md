@@ -1,29 +1,22 @@
-# Milestone v1.0 Requirements: Supabase Keep-Alive Automation
+# Milestone v1.1 Requirements: Database Cleanup & Migration Simplification
 
 ## Overview
-Supabase'in ücretsiz plandaki projeleri 7 gün inaktivite sonrası duraklatmasını önlemek için Next.js API Route ve Vercel Cron altyapısı kurma gereksinimleri.
+Supabase üzerindeki test/geçmiş kayıtların temizlenmesi, askıdaki projenin uyandırılması ve veritabanı migration süreçlerinin sadeleştirilmesi.
 
 ## Requirements
 
-### Cron & API Infrastructure
+### Database Cleanup & Management
 
-- [x] **CRON-01**: Next.js App Router altında `/api/keep-alive` Route Handler oluşturulmalı ve bu endpoint `likit_transactions` tablosundan tek satırlık bir sorgu (`select('id').limit(1)`) çekerek Supabase veritabanını tetiklemelidir.
-- [x] **CRON-02**: Proje kökünde `vercel.json` dosyası oluşturulmalı ve Vercel Cron mekanizması ile günde 1 kez (örn: `0 5 * * *`) `/api/keep-alive` endpoint'i otomatik çağrılacak şekilde tanımlanmalıdır.
-- [x] **CRON-03**: Endpoint yanıtı `status 200` ve `{ success: true, timestamp: "..." }` formatında JSON dönmeli, olası veritabanı hatalarında ise `status 500` ile detay döndürmelidir.
-
-## Future Requirements
-
-- **CRON-04**: İsteğe bağlı olarak `CRON_SECRET` header kontrolü ile endpoint'in sadece Vercel Cron ve yetkili çağrılar tarafından tetiklenmesini sağlama.
-
-## Out of Scope
-
-- Üçüncü parti harici cron ve uptime servisleri (Cron-job.org vb. harici hesap gerektiren servisler).
-- Supabase ücretli Pro plan aboneliği.
+- [x] **DB-01**: Askıda olan `nakit-akisi` (`xwggnghdazogaxcmunci`) Supabase projesi restore edilmeli ve aktif duruma getirilmelidir.
+- [x] **DB-02**: `likit_transactions` tablosundaki tüm eski/test veriler temizlenmeli (TRUNCATE), tablo boş ve temiz bir başlangıç durumuna getirilmelidir.
+- [x] **DB-03**: Veritabanı şeması ve migration adımları sadeleştirilerek standart `supabase/migrations/` yapısına taşınmalı, idempotent SQL ile kurulum tek adıma indirgenmelidir.
+- [x] **DB-04**: Proje dokümantasyonu (README.md) ve SQL dosyaları güncellenmeli, Next.js derleme ve API kontrolleri doğrulanmalıdır.
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CRON-01 | Phase 1 | Completed |
-| CRON-02 | Phase 1 | Completed |
-| CRON-03 | Phase 1 | Completed |
+| DB-01 | Phase 1 | Completed |
+| DB-02 | Phase 1 | Completed |
+| DB-03 | Phase 2 | Completed |
+| DB-04 | Phase 2 | Completed |

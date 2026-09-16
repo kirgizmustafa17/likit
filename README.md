@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Likit - Nakit Akışı Takip Uygulaması
 
-## Getting Started
+Next.js (App Router), Supabase (PostgreSQL), Tailwind CSS ve Recharts ile geliştirilmiş modern nakit akışı ve finansal işlem takip uygulaması.
 
-First, run the development server:
+---
 
+## 🚀 Başlarken
+
+### 1. Bağımlılıkları Yükleyin
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Ortam Değişkenlerini Tanımlayın
+`.env.local` dosyası oluşturarak Supabase bilgilerinizi ekleyin:
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Geliştirme Sunucusunu Başlatın
+```bash
+npm run dev
+```
+Tarayıcınızda [http://localhost:3000](http://localhost:3000) adresini açın.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🗄️ Veritabanı ve Migration Yapısı
 
-To learn more about Next.js, take a look at the following resources:
+Veritabanı migration ve SQL dosyaları standart `supabase/` dizini altında toplanmıştır:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```text
+supabase/
+├── migrations/
+│   └── 20260205000000_create_likit_transactions.sql  # Ana şema, indeksler ve RLS
+└── reset-data.sql                                    # Test/geçmiş kayıtları sıfırlama (TRUNCATE)
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Şema Kurulumu
+1. **Supabase SQL Editor Üzerinden:**
+   - `supabase/migrations/20260205000000_create_likit_transactions.sql` dosyasının içeriğini kopyalayıp Supabase panelinizdeki SQL Editor alanına yapıştırın ve **Run** butonuna basın.
+   - Script *idempotent* (tekrarlanabilir) yapıdadır; birden fazla çalıştırılsa bile hata vermez.
 
-## Deploy on Vercel
+2. **Supabase CLI ile (Opsiyonel):**
+   ```bash
+   npx supabase db push
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Veritabanını Sıfırlama (Verileri Temizleme)
+Test veya geçmiş işlem verilerini sıfırlamak için `supabase/reset-data.sql` scriptini SQL Editor'de çalıştırabilirsiniz:
+```sql
+TRUNCATE TABLE public.likit_transactions;
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## ⏰ Supabase Otomatik Uyandırma (Keep-Alive)
+
+Supabase ücretsiz planında inaktivite nedeniyle projenin askıya alınmasını (paused) önlemek için:
+- **Next.js API Route:** `/api/keep-alive` (`src/app/api/keep-alive/route.ts`)
+- **Vercel Cron:** Proje kökündeki `vercel.json` dosyası aracılığıyla her gün `05:00 UTC`'de otomatik olarak tetiklenir.
+- Vercel'e deploy edildiğinde sıfır konfigürasyonla otomatik devreye girer.
+
+---
+
+## 📦 Üretim Derlemesi (Build)
+
+```bash
+npm run build
+npm start
+```

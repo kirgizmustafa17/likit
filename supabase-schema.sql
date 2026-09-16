@@ -1,27 +1,34 @@
 -- Likit Cash Flow Tracker - Database Schema
--- Run this in your Supabase SQL Editor
+-- Standart migration dosyası: supabase/migrations/20260205000000_create_likit_transactions.sql
+-- Bu dosyayı doğrudan Supabase SQL Editor'de çalıştırabilirsiniz.
 
-CREATE TABLE IF NOT EXISTS likit_transactions (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  title TEXT NOT NULL,
-  amount NUMERIC NOT NULL,
-  transaction_date DATE NOT NULL,
-  is_completed BOOLEAN DEFAULT FALSE,
-  type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
-  completed_date DATE,
-  completed_amount NUMERIC
+CREATE TABLE IF NOT EXISTS public.likit_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    title TEXT NOT NULL,
+    amount NUMERIC NOT NULL,
+    transaction_date DATE NOT NULL,
+    is_completed BOOLEAN NOT NULL DEFAULT FALSE,
+    type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+    completed_date DATE,
+    completed_amount NUMERIC
 );
 
--- Create index for faster date-based queries
-CREATE INDEX IF NOT EXISTS idx_likit_transactions_date ON likit_transactions (transaction_date);
-CREATE INDEX IF NOT EXISTS idx_likit_transactions_completed ON likit_transactions (is_completed);
+-- Indeksler
+CREATE INDEX IF NOT EXISTS idx_likit_transactions_date 
+    ON public.likit_transactions (transaction_date);
 
--- Enable Row Level Security (optional, disabled for simplicity)
-ALTER TABLE likit_transactions ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_likit_transactions_completed 
+    ON public.likit_transactions (is_completed);
 
--- Allow all operations for anonymous users (since we're using anon key)
-CREATE POLICY "Allow all operations for anon" ON likit_transactions
-  FOR ALL
-  USING (true)
-  WITH CHECK (true);
+-- Row Level Security (RLS)
+ALTER TABLE public.likit_transactions ENABLE ROW LEVEL SECURITY;
+
+-- Idempotent anon politikası
+DROP POLICY IF EXISTS "Allow all operations for anon" ON public.likit_transactions;
+
+CREATE POLICY "Allow all operations for anon" 
+    ON public.likit_transactions
+    FOR ALL
+    USING (true)
+    WITH CHECK (true);
