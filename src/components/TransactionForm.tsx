@@ -280,8 +280,8 @@ export default function TransactionForm({
                                     className={cn('type-btn', paymentMethod === 'cash' && 'type-btn-active-cash')}
                                     onClick={() => setPaymentMethod('cash')}
                                 >
-                                    <Wallet size={15} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-                                    Banka / Nakit
+                                    <Wallet size={16} />
+                                    <span>Banka / Nakit</span>
                                 </button>
                                 <button
                                     type="button"
@@ -291,9 +291,8 @@ export default function TransactionForm({
                                     disabled={cards.length === 0}
                                     title={cards.length === 0 ? 'Önce kredi kartı eklemelisiniz' : ''}
                                 >
-                                    <CardIcon size={15} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-                                    Kredi Kartı
-                                    {cards.length === 0 && ' (Kart Yok)'}
+                                    <CardIcon size={16} />
+                                    <span>Kredi Kartı{cards.length === 0 ? ' (Kart Yok)' : ''}</span>
                                 </button>
                             </div>
                         </div>

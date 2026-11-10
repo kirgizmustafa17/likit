@@ -757,7 +757,11 @@ body::before {
 }
 
 .type-btn {
-  padding: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius-xs);
   background: transparent;
@@ -767,6 +771,7 @@ body::before {
   font-family: inherit;
   cursor: pointer;
   transition: all var(--transition);
+  white-space: nowrap;
 }
 
 .type-btn:hover {
