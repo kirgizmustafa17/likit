@@ -147,6 +147,7 @@ export default function Dashboard() {
         is_completed: boolean;
         card_id?: string | null;
         purchase_date?: string | null;
+        due_date?: string | null;
         total_installments?: number;
         completed_date?: string | null;
         completed_amount?: number | null;

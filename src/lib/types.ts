@@ -32,6 +32,7 @@ export interface Transaction {
     // Credit card fields
     card_id?: string | null;
     purchase_date?: string | null;
+    due_date?: string | null;
     installment_no?: number | null;
     total_installments?: number | null;
     parent_transaction_id?: string | null;

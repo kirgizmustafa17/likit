@@ -7,6 +7,7 @@ import {
     generateUUID,
     distributeInstallmentAmounts,
     calculateInstallmentDueDates,
+    calculateInstallmentCutoffDates,
     generateCreditCardInstallments,
     computeCardSummaries,
     getDaysInMonth,
@@ -166,7 +167,8 @@ test('generateCreditCardInstallments creates correct transaction objects', () =>
     assert.strictEqual(installments.length, 3);
     assert.strictEqual(installments[0].title, 'Buzdolabı (1/3)');
     assert.strictEqual(installments[0].amount, 5000);
-    assert.strictEqual(installments[0].transaction_date, '2026-05-25');
+    assert.strictEqual(installments[0].transaction_date, '2026-05-15'); // Cash flow hits on cutoff date
+    assert.strictEqual(installments[0].due_date, '2026-05-25');         // Official bank due date
     assert.strictEqual(installments[0].purchase_date, '2026-05-10');
     assert.strictEqual(installments[0].card_id, 'card-123');
     assert.strictEqual(installments[0].installment_no, 1);
@@ -174,10 +176,12 @@ test('generateCreditCardInstallments creates correct transaction objects', () =>
     assert.strictEqual(installments[0].parent_transaction_id, 'parent-group-1');
 
     assert.strictEqual(installments[1].title, 'Buzdolabı (2/3)');
-    assert.strictEqual(installments[1].transaction_date, '2026-06-25');
+    assert.strictEqual(installments[1].transaction_date, '2026-06-15');
+    assert.strictEqual(installments[1].due_date, '2026-06-25');
 
     assert.strictEqual(installments[2].title, 'Buzdolabı (3/3)');
-    assert.strictEqual(installments[2].transaction_date, '2026-07-25');
+    assert.strictEqual(installments[2].transaction_date, '2026-07-15');
+    assert.strictEqual(installments[2].due_date, '2026-07-25');
 });
 
 test('computeCardSummaries aggregates debt and available limit correctly', () => {
@@ -482,7 +486,16 @@ test('calculateInstallmentDueDates: 12 installments starting in December before 
     assert.strictEqual(dates[11], '2027-11-25');
 });
 
-test('cash flow daily balances: credit card installments affect balance on due dates, not purchase date', () => {
+test('calculateInstallmentCutoffDates: generates sequential statement cutoff dates', () => {
+    const card = { cutoff_day: 15, due_day: 25 };
+    const dates = calculateInstallmentCutoffDates(card, '2026-05-10', 3);
+    assert.strictEqual(dates.length, 3);
+    assert.strictEqual(dates[0], '2026-05-15');
+    assert.strictEqual(dates[1], '2026-06-15');
+    assert.strictEqual(dates[2], '2026-07-15');
+});
+
+test('cash flow daily balances: credit card installments affect balance on statement cutoff dates, not purchase date', () => {
     const mockCard: CreditCard = {
         id: 'card-cf',
         created_at: '2026-01-01',
@@ -507,7 +520,7 @@ test('cash flow daily balances: credit card installments affect balance on due d
         type: 'income',
     };
 
-    // Multi-installment expense purchased on May 10th: 3,000 TL in 3 installments (1000 TL each on May 25, Jun 25, Jul 25)
+    // Multi-installment expense purchased on May 10th: 3,000 TL in 3 installments (1000 TL each on cutoff dates May 15, Jun 15, Jul 15)
     const installments = generateCreditCardInstallments({
         title: 'Telefon',
         totalAmount: 3000,
@@ -530,15 +543,19 @@ test('cash flow daily balances: credit card installments affect balance on due d
     const end = new Date(2026, 4, 30);  // May 30
     const balances = calculateDailyBalances(allTxns, start, end);
 
-    // On May 10 (purchase date), balance is STILL 10,000 because money has NOT left the bank account!
+    // On May 10 (purchase date), balance is STILL 10,000 because payment hits on cutoff date
     const may10 = balances.find((b: { date: string }) => b.date === '2026-05-10');
     assert.strictEqual(may10.balance, 10000);
 
-    // On May 24 (day before due date), balance is STILL 10,000
-    const may24 = balances.find((b: { date: string }) => b.date === '2026-05-24');
-    assert.strictEqual(may24.balance, 10000);
+    // On May 14 (day before cutoff date), balance is STILL 10,000
+    const may14 = balances.find((b: { date: string }) => b.date === '2026-05-14');
+    assert.strictEqual(may14.balance, 10000);
 
-    // On May 25 (due date of installment 1), balance drops by 1,000 to 9,000!
+    // On May 15 (statement cutoff date of installment 1), balance drops by 1,000 to 9,000!
+    const may15 = balances.find((b: { date: string }) => b.date === '2026-05-15');
+    assert.strictEqual(may15.balance, 9000);
+
+    // On May 25 (due date), balance is already deducted at cutoff, so it remains 9,000
     const may25 = balances.find((b: { date: string }) => b.date === '2026-05-25');
     assert.strictEqual(may25.balance, 9000);
 

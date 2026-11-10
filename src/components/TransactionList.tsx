@@ -177,7 +177,18 @@ function TransactionItem({
                         )}
                     </div>
                     <span className="transaction-date">
-                        {card ? `Vade: ${formatDate(effectiveDate)}` : formatDate(effectiveDate)}
+                        {card ? (
+                            <>
+                                <span>Kesim: {formatDate(effectiveDate)}</span>
+                                {t.due_date && (
+                                    <span style={{ marginLeft: '6px', color: 'var(--text-muted)' }}>
+                                        · Son Ödeme: {formatDate(t.due_date)}
+                                    </span>
+                                )}
+                            </>
+                        ) : (
+                            formatDate(effectiveDate)
+                        )}
                         {t.purchase_date && t.purchase_date !== effectiveDate && (
                             <span style={{ marginLeft: '6px', color: 'var(--text-muted)' }}>
                                 (Harcama: {formatDate(t.purchase_date)})

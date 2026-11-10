@@ -202,7 +202,48 @@ export function calculateInstallmentDueDates(
 }
 
 /**
+ * Calculates statement cutoff dates for all installments of a purchase.
+ * Under the cash flow model, credit card payments are assumed to leave
+ * the bank account on the statement cutoff date.
+ */
+export function calculateInstallmentCutoffDates(
+    card: Pick<CreditCard, 'cutoff_day' | 'due_day'>,
+    purchaseDateStr: string,
+    totalInstallments: number
+): string[] {
+    const { cutoffDate: firstCutoffDate } = calculateCardCutoffAndDueDate(card, purchaseDateStr);
+
+    if (totalInstallments <= 1) {
+        return [firstCutoffDate];
+    }
+
+    const [firstYearStr, firstMonthStr] = firstCutoffDate.split('-');
+    const firstYear = parseInt(firstYearStr, 10);
+    const firstMonth = parseInt(firstMonthStr, 10);
+
+    const cutoffDates: string[] = [];
+
+    for (let i = 0; i < totalInstallments; i++) {
+        let targetMonth = firstMonth + i;
+        let targetYear = firstYear;
+
+        while (targetMonth > 12) {
+            targetMonth -= 12;
+            targetYear += 1;
+        }
+
+        const maxDays = getDaysInMonth(targetYear, targetMonth);
+        const day = Math.min(card.cutoff_day, maxDays);
+        cutoffDates.push(toDateStr(targetYear, targetMonth, day));
+    }
+
+    return cutoffDates;
+}
+
+/**
  * Generates transaction records for a credit card purchase (one-time or multi-installment).
+ * The effective transaction_date is the statement cutoff date (hesap kesim tarihi),
+ * while due_date preserves the official bank payment deadline.
  */
 export function generateCreditCardInstallments({
     title,
@@ -221,6 +262,7 @@ export function generateCreditCardInstallments({
 }): Array<Omit<Transaction, 'id' | 'created_at'>> {
     const installmentsCount = Math.max(1, totalInstallments);
     const amounts = distributeInstallmentAmounts(totalAmount, installmentsCount);
+    const cutoffDates = calculateInstallmentCutoffDates(card, purchaseDate, installmentsCount);
     const dueDates = calculateInstallmentDueDates(card, purchaseDate, installmentsCount);
     const parentId = parentTransactionId || generateUUID();
 
@@ -233,7 +275,8 @@ export function generateCreditCardInstallments({
         return {
             title: installmentTitle,
             amount,
-            transaction_date: dueDates[index],
+            transaction_date: cutoffDates[index], // Cash flow deduction hits on statement cutoff date
+            due_date: dueDates[index],           // Bank payment deadline
             purchase_date: purchaseDate,
             type: 'expense' as const,
             is_completed: false,

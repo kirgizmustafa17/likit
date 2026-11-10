@@ -4,7 +4,12 @@ import { useState, useEffect } from 'react';
 import { X, CreditCard as CardIcon, Wallet, Calendar } from 'lucide-react';
 import { Transaction, CreditCard } from '@/lib/types';
 import { cn, getTodayStr, formatCurrency, formatDate } from '@/lib/utils';
-import { calculateCardCutoffAndDueDate, distributeInstallmentAmounts, calculateInstallmentDueDates } from '@/lib/creditCardUtils';
+import {
+    calculateCardCutoffAndDueDate,
+    distributeInstallmentAmounts,
+    calculateInstallmentDueDates,
+    calculateInstallmentCutoffDates,
+} from '@/lib/creditCardUtils';
 
 interface TransactionFormProps {
     isOpen: boolean;
@@ -17,6 +22,7 @@ interface TransactionFormProps {
         is_completed: boolean;
         card_id?: string | null;
         purchase_date?: string | null;
+        due_date?: string | null;
         total_installments?: number;
         completed_date?: string | null;
         completed_amount?: number | null;
@@ -117,15 +123,22 @@ export default function TransactionForm({
         calculatedCutoffDate = cycle.cutoffDate;
 
         if (isExistingInstallment) {
-            // For an existing installment, calculate the due date for THIS specific installment number
+            // For an existing installment, calculate dates for THIS specific installment number
+            const allCutoffDates = calculateInstallmentCutoffDates(
+                selectedCard,
+                purchaseDate,
+                editingTransaction!.total_installments!
+            );
             const allDueDates = calculateInstallmentDueDates(
                 selectedCard,
                 purchaseDate,
                 editingTransaction!.total_installments!
             );
             const installmentIdx = (editingTransaction!.installment_no || 1) - 1;
-            calculatedDueDate = allDueDates[installmentIdx] || editingTransaction!.transaction_date;
+            calculatedCutoffDate = allCutoffDates[installmentIdx] || editingTransaction!.transaction_date;
+            calculatedDueDate = allDueDates[installmentIdx] || editingTransaction!.due_date || cycle.dueDate;
         } else {
+            calculatedCutoffDate = cycle.cutoffDate;
             calculatedDueDate = cycle.dueDate;
             if (parsedAmount > 0) {
                 installmentAmounts = distributeInstallmentAmounts(parsedAmount, parsedInstallments);
@@ -138,8 +151,8 @@ export default function TransactionForm({
         if (!title || !amount) return;
 
         const isCC = type === 'expense' && paymentMethod === 'credit_card' && Boolean(selectedCard);
-        // Effective transaction date is calculated due date for credit cards, or user date for cash
-        const effectiveDate = isCC && calculatedDueDate ? calculatedDueDate : (date || getTodayStr());
+        // Effective transaction date is calculated cutoff date for credit cards, or user date for cash
+        const effectiveDate = isCC && calculatedCutoffDate ? calculatedCutoffDate : (date || getTodayStr());
 
         if (editingTransaction && onUpdate) {
             onUpdate(editingTransaction.id, {
@@ -150,6 +163,7 @@ export default function TransactionForm({
                 is_completed: isCompleted,
                 card_id: isCC ? selectedCard?.id : null,
                 purchase_date: isCC ? purchaseDate : null,
+                due_date: isCC ? calculatedDueDate : null,
                 installment_no: editingTransaction.installment_no || (isCC ? 1 : null),
                 total_installments: isCC ? (editingTransaction.total_installments || parsedInstallments) : 1,
                 ...(isCompleted && {
@@ -170,6 +184,7 @@ export default function TransactionForm({
                 is_completed: isCompleted,
                 card_id: isCC ? selectedCard?.id : null,
                 purchase_date: isCC ? purchaseDate : null,
+                due_date: isCC ? calculatedDueDate : null,
                 total_installments: isCC ? parsedInstallments : 1,
                 completed_date: isCompleted ? effectiveDate : null,
                 completed_amount: isCompleted ? parseFloat(amount) : null,
@@ -363,8 +378,8 @@ export default function TransactionForm({
                                     </div>
                                     <div className="cc-calc-body">
                                         <p>
-                                            <strong>Son Ödeme (Vade):</strong> {formatDate(calculatedDueDate)}
-                                            <span className="cc-calc-sub"> (Hesap kesim: {formatDate(calculatedCutoffDate)})</span>
+                                            <strong>Nakit Akışı (Hesap Kesim):</strong> {formatDate(calculatedCutoffDate)}
+                                            <span className="cc-calc-sub"> (Banka Son Ödeme: {formatDate(calculatedDueDate)})</span>
                                         </p>
                                         {isExistingInstallment ? (
                                             <p style={{ marginTop: '4px' }}>
@@ -378,8 +393,7 @@ export default function TransactionForm({
                                             )
                                         )}
                                         <p className="cc-calc-hint">
-                                            Bu harcama nakit akışı grafiğinize ve bakiyenize harcama gününde değil,
-                                            kart ekstrenizin <strong>son ödeme tarihinde</strong> yansıtılacaktır.
+                                            Bu harcama nakit akışı grafiğinize ve bakiyenize kart ekstrenizin <strong>hesap kesim tarihinde</strong> ödeneceği varsayımı ile dahil edilecektir.
                                         </p>
                                     </div>
                                 </div>
