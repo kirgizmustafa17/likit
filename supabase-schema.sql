@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.likit_credit_cards (
     bank_name TEXT,
     last_four_digits VARCHAR(4),
     color TEXT NOT NULL DEFAULT 'indigo',
+    card_network TEXT NOT NULL DEFAULT 'other',
     credit_limit NUMERIC NOT NULL DEFAULT 0,
     cutoff_day INTEGER NOT NULL CHECK (cutoff_day BETWEEN 1 AND 31),
     due_day INTEGER NOT NULL CHECK (due_day BETWEEN 1 AND 31),

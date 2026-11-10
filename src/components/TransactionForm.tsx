@@ -311,11 +311,16 @@ export default function TransactionForm({
                                         className="select-input"
                                         required
                                     >
-                                        {cards.map(c => (
-                                            <option key={c.id} value={c.id}>
-                                                {c.name} {c.bank_name ? `(${c.bank_name})` : ''} · Kesim: {c.cutoff_day}
-                                            </option>
-                                        ))}
+                                        {cards.map(c => {
+                                            const netLabel = c.card_network && c.card_network !== 'other'
+                                                ? `[${c.card_network.toUpperCase()}] `
+                                                : '';
+                                            return (
+                                                <option key={c.id} value={c.id}>
+                                                    {netLabel}{c.name} {c.bank_name ? `(${c.bank_name})` : ''} · Kesim: {c.cutoff_day}
+                                                </option>
+                                            );
+                                        })}
                                     </select>
                                 </div>
 

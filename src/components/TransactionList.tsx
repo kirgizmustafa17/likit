@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Edit3, Trash2, CheckCircle2, Clock, ArrowUpCircle, ArrowDownCircle, ChevronDown, ChevronRight, CreditCard as CardIcon } from 'lucide-react';
 import { Transaction, CreditCard } from '@/lib/types';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import CardNetworkBadge from './CardNetworkBadge';
 
 interface TransactionListProps {
     transactions: Transaction[];
@@ -177,7 +178,8 @@ function TransactionItem({
                         <span className="transaction-title" id={`tx-title-${t.id}`}>{t.title}</span>
                         {card && (
                             <span className="cc-tag-badge" id={`tx-badge-card-${t.id}`}>
-                                💳 {card.name}
+                                <CardNetworkBadge network={card.card_network} variant="icon" />
+                                <span>{card.name}</span>
                             </span>
                         )}
                         {t.total_installments && t.total_installments > 1 && (

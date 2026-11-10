@@ -25,6 +25,7 @@ import PeriodNavigator from './PeriodNavigator';
 import CompleteModal from './CompleteModal';
 import CreditCardsView from './CreditCardsView';
 import CreditCardModal from './CreditCardModal';
+import PWAInstallPrompt from './PWAInstallPrompt';
 
 export default function Dashboard() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -106,6 +107,23 @@ export default function Dashboard() {
             }
         }
     }, [loading, transactions, autoCompleteTransactions]);
+
+    // Handle PWA shortcuts from Android home screen long-press
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        const tab = params.get('tab');
+        const action = params.get('action');
+
+        if (tab === 'credit_cards') {
+            setActiveTab('credit_cards');
+        }
+        if (action === 'new-transaction') {
+            setEditingTransaction(null);
+            setDefaultCardId(undefined);
+            setIsFormOpen(true);
+        }
+    }, []);
 
     // Calculate period range for cash flow
     const { chartStart: periodChartStart, chartEnd: periodChartEnd, label: periodLabel } = getPeriodRange(periodOffset);
@@ -482,6 +500,9 @@ export default function Dashboard() {
                 editingCard={editingCard}
                 onUpdate={handleUpdateCard}
             />
+
+            {/* PWA Installation Promotion */}
+            <PWAInstallPrompt />
         </div>
     );
 }

@@ -1,27 +1,27 @@
-# Roadmap: Milestone v1.2 Credit Card Support (Kredi Kartı Desteği)
+# Roadmap: Milestone v1.4 Card Network Badges & Dynamic Card Theming
 
 ## Roadmap
 
-**2 phases** | **7 requirements mapped** | All covered ✓
+**2 phases** | **4 requirements mapped** | All covered ✓
 
 | # | Phase | Goal | Requirements | Success Criteria |
 |---|-------|------|--------------|------------------|
-| 1 | Database Schema & Calculation Engine | Kredi kartı şemasını oluşturmak, taksit ve ekstre vadelerini kuruş hassasiyetiyle hesaplayan motoru kurmak ve test etmek | CC-01, CC-02, CC-03 | 3 |
-| 2 | Credit Card Management & Transaction UI | Kart tanımlama modalı, görsel kartlar görünümü, taksitli harcama formu ve filtreli işlem listesini geliştirmek | CC-04, CC-05, CC-06, CC-07 | 4 |
+| 1 | Database Migration, Types & Utility Helpers | Veritabanında `card_network` alanını açmak, 7 kartı taşımak, tip ve yardımcı fonksiyonları testlerle inşa etmek | NET-01, NET-02 | 2 |
+| 2 | Impeccable Badges, Card Theming & UI Integration | Vektörel ağ rozetleri üretmek, görsel kartları ve modalları dinamik renk temalarıyla donatmak | NET-03, NET-04 | 2 |
 
 ### Phase Details
 
-**Phase 1: Database Schema & Calculation Engine**
-- **Goal:** Veritabanı tablolarını (`likit_credit_cards`, `likit_transactions` ilişkisi) ve matematiksel/tarihsel taksit-vade hesaplama motorunu inşa etmek.
-- **Requirements:** CC-01, CC-02, CC-03
+**Phase 1: Database Migration, Types & Utility Helpers**
+- **Goal:** Veritabanına `card_network` alanını eklemek, mevcut 7 kartın isimlerindeki Troy/Visa/Mastercard ibarelerini temizleyip ağlarını güncellemek, `CardNetwork` tiplerini ve isim temizleme/tema fonksiyonlarını unit testlerle güvenceye almak.
+- **Requirements:** NET-01, NET-02
 - **Success criteria:**
-  1. `supabase/migrations/20260205000001_create_likit_credit_cards.sql` idempotent DDL ve RLS politikaları hazır olmalı.
-  2. `creditCardUtils.ts` modülü ay uzunlukları, artık yıllar ve kuruş dağıtımı dahil 19 adet birim testiyle doğrulanmalı (`npm test`).
+  1. `supabase/migrations/20260205000002_add_card_network.sql` ve Supabase live DB üzerinde `card_network` kolonu açılmış ve 7 kart güncellenmiş olmalı.
+  2. `tests/cardNetwork.test.ts` ile `detectCardNetwork`, `cleanCardName` ve tema fonksiyonları %100 test edilmiş olmalı.
 
-**Phase 2: Credit Card Management & Transaction UI**
-- **Goal:** Kullanıcı arayüzünde kredi kartı yönetimini, görsel kartları, taksitli harcama girişini ve kart bazlı filtrelemeyi devreye almak.
-- **Requirements:** CC-04, CC-05, CC-06, CC-07
+**Phase 2: Impeccable Badges, Card Theming & UI Integration**
+- **Goal:** Vektörel `CardNetworkBadge` bileşenini tasarlamak, görsel kartların sağ alt köşesinde rozeti göstermek, kart renklerini ağa göre dinamik renklendirmek, `CreditCardModal`, `CreditCardsView`, `TransactionList` ve `TransactionForm` bileşenlerine entegre etmek.
+- **Requirements:** NET-03, NET-04
 - **Success criteria:**
-  1. Kart ekleme/düzenleme (`CreditCardModal`) ve kartlar görünümü (`CreditCardsView`) aktif olmalı.
-  2. Harcama formu (`TransactionForm`) kredi kartı seçimi, taksit sayısı ve otomatik vade hesaplama önizlemesi sunmalı.
-  3. Dashboard sekmeleri ve işlem listesi rozet/filtre mekanizması Next.js üretim derlemesinde (`npm run build`) hatasız derlenmeli.
+  1. Kartların üzerinde, filtre sekmelerinde ve harcama listelerinde zarif ağ rozetleri görünmeli.
+  2. Yeni kart eklerken kart ismi yazıldığında otomatik ağ tespiti ve ağ teması uygulanmalı.
+  3. `npm test` ve `npm run build` sıfır hatayla tamamlanmalı.

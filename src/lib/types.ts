@@ -1,3 +1,5 @@
+export type CardNetwork = 'troy' | 'visa' | 'mastercard' | 'other';
+
 export interface CreditCard {
     id: string;
     created_at: string;
@@ -5,6 +7,7 @@ export interface CreditCard {
     bank_name?: string | null;
     last_four_digits?: string | null;
     color: string;
+    card_network?: CardNetwork | null;
     credit_limit: number;
     cutoff_day: number;
     due_day: number;

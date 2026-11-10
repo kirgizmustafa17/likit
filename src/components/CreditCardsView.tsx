@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { Plus, CreditCard as CardIcon, Edit3, Trash2, Calendar, AlertCircle, ShoppingBag, CheckCircle2 } from 'lucide-react';
 import { CreditCard, CreditCardSummary, Transaction } from '@/lib/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { CARD_COLORS } from './CreditCardModal';
+import { getCardColorTheme } from '@/lib/creditCardUtils';
+import CardNetworkBadge from './CardNetworkBadge';
 
 interface CreditCardsViewProps {
     cards: CreditCardSummary[];
@@ -123,7 +124,7 @@ export default function CreditCardsView({
             ) : (
                 <div className="cc-cards-grid" id="cc-cards-grid">
                     {cards.map(card => {
-                        const colorDef = CARD_COLORS.find(c => c.id === card.color) || CARD_COLORS[0];
+                        const colorDef = getCardColorTheme(card.color, card.card_network);
                         const usagePercent = card.credit_limit > 0
                             ? Math.min(100, Math.round((card.current_debt / card.credit_limit) * 100))
                             : 0;
@@ -191,10 +192,13 @@ export default function CreditCardsView({
                                 </div>
 
                                 <div className="vcc-name-row">
-                                    <span className="vcc-name" id={`vcc-name-${card.id}`}>{card.name}</span>
-                                    <span className="vcc-dates-info" id={`vcc-cutoff-${card.id}`}>
-                                        Kesim: Ayın {card.cutoff_day}. günü
-                                    </span>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <span className="vcc-name" id={`vcc-name-${card.id}`}>{card.name}</span>
+                                        <span className="vcc-dates-info" id={`vcc-cutoff-${card.id}`}>
+                                            Kesim: Ayın {card.cutoff_day}. günü
+                                        </span>
+                                    </div>
+                                    <CardNetworkBadge network={card.card_network} variant="card" />
                                 </div>
 
                                 {/* Progress Bar of limit usage */}
@@ -258,7 +262,8 @@ export default function CreditCardsView({
                                     className={`cc-filter-tab ${activeSelectedId === c.id ? 'active' : ''}`}
                                     onClick={() => setSelectedCardId(c.id)}
                                 >
-                                    {c.name}
+                                    <CardNetworkBadge network={c.card_network} variant="icon" />
+                                    <span>{c.name}</span>
                                 </button>
                             ))}
                         </div>
@@ -298,7 +303,8 @@ export default function CreditCardsView({
                                                                 <span className="transaction-title" id={`cc-tx-title-${t.id}`}>{t.title}</span>
                                                                 {card && (
                                                                     <span className="cc-tag-badge">
-                                                                        {card.name}
+                                                                        <CardNetworkBadge network={card.card_network} variant="icon" />
+                                                                        <span>{card.name}</span>
                                                                     </span>
                                                                 )}
                                                                 {t.total_installments && t.total_installments > 1 && (
@@ -372,7 +378,8 @@ export default function CreditCardsView({
                                                                 <span className="transaction-title">{t.title}</span>
                                                                 {card && (
                                                                     <span className="cc-tag-badge">
-                                                                        {card.name}
+                                                                        <CardNetworkBadge network={card.card_network} variant="icon" />
+                                                                        <span>{card.name}</span>
                                                                     </span>
                                                                 )}
                                                             </div>

@@ -1,4 +1,4 @@
-import { CreditCard, CreditCardSummary, Transaction } from './types';
+import { CreditCard, CreditCardSummary, Transaction, CardNetwork } from './types';
 import { getTodayStr } from './utils';
 
 /**
@@ -352,4 +352,276 @@ export function computeCardSummaries(
             pending_transactions_count: cardTxns.length,
         };
     });
+}
+
+/* ─── Card Network & Dynamic Theming ─── */
+
+export interface CardNetworkOption {
+    id: CardNetwork;
+    name: string;
+    shortLabel: string;
+    defaultColor: string;
+    description: string;
+}
+
+export const CARD_NETWORKS: CardNetworkOption[] = [
+    { id: 'troy', name: 'Troy', shortLabel: 'TROY', defaultColor: 'troy-cyan', description: "Türkiye'nin Ödeme Yöntemi" },
+    { id: 'visa', name: 'Visa', shortLabel: 'VISA', defaultColor: 'visa-royal', description: 'Visa Global' },
+    { id: 'mastercard', name: 'Mastercard', shortLabel: 'MC', defaultColor: 'mastercard-ember', description: 'Mastercard Worldwide' },
+    { id: 'other', name: 'Diğer', shortLabel: 'KART', defaultColor: 'indigo', description: 'Standart Ödeme Kartı' },
+];
+
+export interface CardColorTheme {
+    id: string;
+    name: string;
+    network?: CardNetwork;
+    bg: string;
+    border: string;
+    text: string;
+    accent: string;
+}
+
+export const NETWORK_THEMES: Record<string, CardColorTheme> = {
+    // Troy - signature cyan, teal and deep marine
+    'troy-cyan': {
+        id: 'troy-cyan',
+        name: 'Troy Turkuaz',
+        network: 'troy',
+        bg: 'linear-gradient(135deg, #0e7490 0%, #115e59 50%, #042f2e 100%)',
+        border: '#14b8a6',
+        text: '#ffffff',
+        accent: '#2dd4bf',
+    },
+    'troy-marine': {
+        id: 'troy-marine',
+        name: 'Troy Okyanus',
+        network: 'troy',
+        bg: 'linear-gradient(135deg, #0284c7 0%, #0369a1 40%, #082f49 100%)',
+        border: '#0ea5e9',
+        text: '#ffffff',
+        accent: '#38bdf8',
+    },
+    'troy-midnight': {
+        id: 'troy-midnight',
+        name: 'Troy Gece Mavisi',
+        network: 'troy',
+        bg: 'linear-gradient(135deg, #0f766e 0%, #0f172a 100%)',
+        border: '#2dd4bf',
+        text: '#ffffff',
+        accent: '#5eead4',
+    },
+
+    // Mastercard - signature ember red, obsidian charcoal and ruby
+    'mastercard-ember': {
+        id: 'mastercard-ember',
+        name: 'Mastercard Köz',
+        network: 'mastercard',
+        bg: 'linear-gradient(135deg, #b91c1c 0%, #7f1d1d 40%, #1c1917 100%)',
+        border: '#f59e0b',
+        text: '#ffffff',
+        accent: '#f97316',
+    },
+    'mastercard-obsidian': {
+        id: 'mastercard-obsidian',
+        name: 'Mastercard Obsidian',
+        network: 'mastercard',
+        bg: 'linear-gradient(135deg, #262626 0%, #171717 60%, #450a0a 100%)',
+        border: '#ef4444',
+        text: '#ffffff',
+        accent: '#fbbf24',
+    },
+    'mastercard-ruby': {
+        id: 'mastercard-ruby',
+        name: 'Mastercard Yakut',
+        network: 'mastercard',
+        bg: 'linear-gradient(135deg, #991b1b 0%, #581c87 100%)',
+        border: '#fb7185',
+        text: '#ffffff',
+        accent: '#f43f5e',
+    },
+
+    // Visa - royal cobalt, gold navy and classic blue
+    'visa-royal': {
+        id: 'visa-royal',
+        name: 'Visa Asil Mavi',
+        network: 'visa',
+        bg: 'linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 50%, #0f172a 100%)',
+        border: '#3b82f6',
+        text: '#ffffff',
+        accent: '#60a5fa',
+    },
+    'visa-gold': {
+        id: 'visa-gold',
+        name: 'Visa Altın Lacivert',
+        network: 'visa',
+        bg: 'linear-gradient(135deg, #1e40af 0%, #172554 60%, #78350f 100%)',
+        border: '#f59e0b',
+        text: '#ffffff',
+        accent: '#fbbf24',
+    },
+    'visa-classic': {
+        id: 'visa-classic',
+        name: 'Visa Klasik',
+        network: 'visa',
+        bg: 'linear-gradient(135deg, #2563eb 0%, #1e1b4b 100%)',
+        border: '#60a5fa',
+        text: '#ffffff',
+        accent: '#93c5fd',
+    },
+
+    // Generic presets
+    'indigo': {
+        id: 'indigo',
+        name: 'İndigo',
+        network: 'other',
+        bg: 'linear-gradient(135deg, #4f46e5 0%, #312e81 100%)',
+        border: '#6366f1',
+        text: '#ffffff',
+        accent: '#818cf8',
+    },
+    'emerald': {
+        id: 'emerald',
+        name: 'Zümrüt',
+        network: 'other',
+        bg: 'linear-gradient(135deg, #059669 0%, #064e3b 100%)',
+        border: '#10b981',
+        text: '#ffffff',
+        accent: '#34d399',
+    },
+    'blue': {
+        id: 'blue',
+        name: 'Okyanus',
+        network: 'other',
+        bg: 'linear-gradient(135deg, #0284c7 0%, #0c4a6e 100%)',
+        border: '#38bdf8',
+        text: '#ffffff',
+        accent: '#7dd3fc',
+    },
+    'purple': {
+        id: 'purple',
+        name: 'Mor',
+        network: 'other',
+        bg: 'linear-gradient(135deg, #9333ea 0%, #581c87 100%)',
+        border: '#c084fc',
+        text: '#ffffff',
+        accent: '#d8b4fe',
+    },
+    'rose': {
+        id: 'rose',
+        name: 'Gül Kurusu',
+        network: 'other',
+        bg: 'linear-gradient(135deg, #e11d48 0%, #881337 100%)',
+        border: '#fb7185',
+        text: '#ffffff',
+        accent: '#fda4af',
+    },
+    'amber': {
+        id: 'amber',
+        name: 'Altın',
+        network: 'other',
+        bg: 'linear-gradient(135deg, #d97706 0%, #78350f 100%)',
+        border: '#f59e0b',
+        text: '#ffffff',
+        accent: '#fcd34d',
+    },
+    'slate': {
+        id: 'slate',
+        name: 'Koyu Grafit',
+        network: 'other',
+        bg: 'linear-gradient(135deg, #334155 0%, #0f172a 100%)',
+        border: '#64748b',
+        text: '#ffffff',
+        accent: '#94a3b8',
+    },
+};
+
+/**
+ * Returns a list of colors recommended for a specific network (or all if not specified).
+ */
+export function getColorsForNetwork(network?: CardNetwork): CardColorTheme[] {
+    const all = Object.values(NETWORK_THEMES);
+    if (!network || network === 'other') {
+        return all;
+    }
+    const networkMatches = all.filter(c => c.network === network);
+    const others = all.filter(c => c.network !== network);
+    return [...networkMatches, ...others];
+}
+
+/**
+ * Gets the color theme configuration for a card. Fallbacks to network default, then indigo.
+ */
+export function getCardColorTheme(colorId?: string | null, network?: CardNetwork | null): CardColorTheme {
+    if (colorId && NETWORK_THEMES[colorId]) {
+        return NETWORK_THEMES[colorId];
+    }
+    if (network) {
+        const netDef = CARD_NETWORKS.find(n => n.id === network);
+        if (netDef && NETWORK_THEMES[netDef.defaultColor]) {
+            return NETWORK_THEMES[netDef.defaultColor];
+        }
+    }
+    return NETWORK_THEMES['indigo'];
+}
+
+/**
+ * Detects the card payment network from raw input text (card name, bank name, etc.).
+ */
+export function detectCardNetwork(text: string): CardNetwork {
+    if (!text) return 'other';
+    const lower = text.toLowerCase();
+
+    // Check Troy (handles 'troy', 'ltroy')
+    if (/\b(troy|ltroy)\b/i.test(lower) || /l?troy/i.test(lower)) {
+        return 'troy';
+    }
+
+    // Check Mastercard (handles 'mastercard', 'master card', 'master-card')
+    if (/\b(mastercard|master\s*card)\b/i.test(lower)) {
+        return 'mastercard';
+    }
+
+    // Check Visa (handles 'visa')
+    if (/\bvisa\b/i.test(lower)) {
+        return 'visa';
+    }
+
+    return 'other';
+}
+
+/**
+ * Cleans the card name by stripping network keywords and trailing punctuation/hyphens,
+ * and identifies the detected network.
+ * Example: "Bankkart Gold Troy" -> cleanName: "Bankkart Gold", network: "troy"
+ * Example: "Axess God lTroy" -> cleanName: "Axess God", network: "troy"
+ * Example: "Bonus Flexi Mastercard" -> cleanName: "Bonus Flexi", network: "mastercard"
+ * Example: "Tercih Express Visa" -> cleanName: "Tercih Express", network: "visa"
+ */
+export function cleanCardName(rawName: string): { cleanName: string; detectedNetwork: CardNetwork } {
+    if (!rawName) {
+        return { cleanName: '', detectedNetwork: 'other' };
+    }
+
+    const detectedNetwork = detectCardNetwork(rawName);
+
+    // Regex to match network words and surrounding brackets or punctuation
+    const networkRegex = /[\(\[\{-]?\s*\b(l?troy|master\s*card|mastercard|visa)\b\s*[\)\]\}]?/gi;
+
+    let cleaned = rawName
+        .replace(networkRegex, ' ')
+        // Remove trailing or leading hyphens, slashes, or pipes
+        .replace(/^[\s\-_/|]+|[\s\-_/|]+$/g, '')
+        // Collapse multiple spaces into one
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+
+    // If string becomes completely empty (user entered only "Troy" or "Visa"), keep original or fallback
+    if (!cleaned) {
+        cleaned = rawName.trim();
+    }
+
+    return {
+        cleanName: cleaned,
+        detectedNetwork,
+    };
 }

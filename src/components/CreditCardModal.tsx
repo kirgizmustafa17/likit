@@ -1,8 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, CreditCard as CardIcon, Check } from 'lucide-react';
-import { CreditCard } from '@/lib/types';
+import { X, CreditCard as CardIcon, Check, Sparkles } from 'lucide-react';
+import { CreditCard, CardNetwork } from '@/lib/types';
+import {
+    CARD_NETWORKS,
+    getColorsForNetwork,
+    getCardColorTheme,
+    cleanCardName,
+} from '@/lib/creditCardUtils';
+import CardNetworkBadge from './CardNetworkBadge';
 
 interface CreditCardModalProps {
     isOpen: boolean;
@@ -11,16 +18,6 @@ interface CreditCardModalProps {
     editingCard?: CreditCard | null;
     onUpdate?: (id: string, updates: Partial<CreditCard>) => Promise<void>;
 }
-
-export const CARD_COLORS = [
-    { id: 'indigo', name: 'İndigo', bg: 'linear-gradient(135deg, #4f46e5 0%, #312e81 100%)', border: '#6366f1' },
-    { id: 'emerald', name: 'Zümrüt', bg: 'linear-gradient(135deg, #059669 0%, #064e3b 100%)', border: '#10b981' },
-    { id: 'blue', name: 'Okyanus', bg: 'linear-gradient(135deg, #0284c7 0%, #0c4a6e 100%)', border: '#38bdf8' },
-    { id: 'purple', name: 'Mor', bg: 'linear-gradient(135deg, #9333ea 0%, #581c87 100%)', border: '#c084fc' },
-    { id: 'rose', name: 'Gül Kurusu', bg: 'linear-gradient(135deg, #e11d48 0%, #881337 100%)', border: '#fb7185' },
-    { id: 'amber', name: 'Altın', bg: 'linear-gradient(135deg, #d97706 0%, #78350f 100%)', border: '#f59e0b' },
-    { id: 'slate', name: 'Koyu Grafit', bg: 'linear-gradient(135deg, #334155 0%, #0f172a 100%)', border: '#64748b' },
-];
 
 export const POPULAR_BANKS = [
     'Garanti BBVA',
@@ -31,6 +28,8 @@ export const POPULAR_BANKS = [
     'Enpara',
     'Ziraat Bankası',
     'Vakıfbank',
+    'Kuveyt Türk',
+    'TEB',
 ];
 
 export default function CreditCardModal({
@@ -41,28 +40,34 @@ export default function CreditCardModal({
     onUpdate,
 }: CreditCardModalProps) {
     const [name, setName] = useState('');
+    const [network, setNetwork] = useState<CardNetwork>('other');
     const [bankName, setBankName] = useState('');
     const [lastFour, setLastFour] = useState('');
     const [creditLimit, setCreditLimit] = useState('');
     const [cutoffDay, setCutoffDay] = useState('15');
     const [color, setColor] = useState('indigo');
     const [saving, setSaving] = useState(false);
+    const [nameCleanSuggestion, setNameCleanSuggestion] = useState<string | null>(null);
 
     useEffect(() => {
         if (editingCard) {
             setName(editingCard.name || '');
+            setNetwork(editingCard.card_network || 'other');
             setBankName(editingCard.bank_name || '');
             setLastFour(editingCard.last_four_digits || '');
             setCreditLimit(editingCard.credit_limit ? String(editingCard.credit_limit) : '0');
             setCutoffDay(String(editingCard.cutoff_day || 15));
             setColor(editingCard.color || 'indigo');
+            setNameCleanSuggestion(null);
         } else {
             setName('');
+            setNetwork('other');
             setBankName('Garanti BBVA');
             setLastFour('');
             setCreditLimit('50000');
             setCutoffDay('15');
             setColor('indigo');
+            setNameCleanSuggestion(null);
         }
     }, [editingCard, isOpen]);
 
@@ -80,6 +85,54 @@ export default function CreditCardModal({
 
     if (!isOpen) return null;
 
+    // Handle name input change with smart network auto-detection
+    const handleNameChange = (val: string) => {
+        setName(val);
+        const { cleanName, detectedNetwork } = cleanCardName(val);
+
+        if (detectedNetwork !== 'other' && detectedNetwork !== network) {
+            setNetwork(detectedNetwork);
+            // Suggest clean name if it stripped something
+            if (cleanName !== val) {
+                setNameCleanSuggestion(cleanName);
+            }
+            // Auto update color to network default if not customized yet
+            const netDef = CARD_NETWORKS.find(n => n.id === detectedNetwork);
+            if (netDef) {
+                setColor(netDef.defaultColor);
+            }
+        } else if (cleanName !== val && detectedNetwork !== 'other') {
+            setNameCleanSuggestion(cleanName);
+        } else {
+            setNameCleanSuggestion(null);
+        }
+    };
+
+    // Apply the clean name suggestion
+    const applyCleanName = () => {
+        if (nameCleanSuggestion) {
+            setName(nameCleanSuggestion);
+            setNameCleanSuggestion(null);
+        }
+    };
+
+    // Explicit network selector click
+    const handleSelectNetwork = (newNet: CardNetwork) => {
+        setNetwork(newNet);
+        const netDef = CARD_NETWORKS.find(n => n.id === newNet);
+        if (netDef) {
+            setColor(netDef.defaultColor);
+        }
+        // If current name has old network keyword, clean it
+        if (name) {
+            const { cleanName } = cleanCardName(name);
+            if (cleanName && cleanName !== name) {
+                setName(cleanName);
+                setNameCleanSuggestion(null);
+            }
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!name) return;
@@ -88,8 +141,13 @@ export default function CreditCardModal({
         try {
             const cutoffNum = Math.min(31, Math.max(1, parseInt(cutoffDay, 10) || 1));
             const autoDueDay = cutoffNum + 10 > 30 ? (cutoffNum + 10 - 30) : (cutoffNum + 10);
+            
+            // Clean name if pending
+            const finalName = nameCleanSuggestion || name.trim();
+
             const cardData = {
-                name,
+                name: finalName,
+                card_network: network,
                 bank_name: bankName || null,
                 last_four_digits: lastFour ? lastFour.slice(0, 4) : null,
                 credit_limit: parseFloat(creditLimit) || 0,
@@ -112,7 +170,8 @@ export default function CreditCardModal({
         }
     };
 
-    const activeColorObj = CARD_COLORS.find(c => c.id === color) || CARD_COLORS[0];
+    const activeColorObj = getCardColorTheme(color, network);
+    const availableColors = getColorsForNetwork(network);
 
     return (
         <div className="modal-overlay" id="modal-credit-card" onClick={onClose}>
@@ -149,25 +208,59 @@ export default function CreditCardModal({
                             <span className="card-preview-label">Kart Adı</span>
                             <div className="card-preview-val" id="vcc-preview-name">{name || 'Kart İsmi'}</div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                            <span className="card-preview-label">Hesap Kesim</span>
-                            <div className="card-preview-val" id="vcc-preview-cutoff">Ayın {cutoffDay}&apos;i (+10 gün vade)</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                            <CardNetworkBadge network={network} variant="card" />
+                            <div className="card-preview-val" id="vcc-preview-cutoff" style={{ fontSize: '11px', opacity: 0.85 }}>
+                                Kesim: {cutoffDay}. gün
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="form" id="form-credit-card" style={{ marginTop: '16px' }}>
+                    {/* Payment Network Selector */}
+                    <div className="form-group" id="group-cc-network">
+                        <label>Ödeme Ağı (Kart Etiketi)</label>
+                        <div className="network-selector-grid" id="network-selector-grid">
+                            {CARD_NETWORKS.map(net => {
+                                const isSelected = network === net.id;
+                                return (
+                                    <button
+                                        key={net.id}
+                                        id={`btn-network-${net.id}`}
+                                        type="button"
+                                        onClick={() => handleSelectNetwork(net.id)}
+                                        className={`network-select-btn ${isSelected ? 'active' : ''}`}
+                                    >
+                                        <CardNetworkBadge network={net.id} variant="icon" />
+                                        <span className="network-name">{net.name}</span>
+                                        {isSelected && <Check size={13} className="network-check" />}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
                     <div className="form-group">
                         <label htmlFor="input-cc-name">Kart İsmi / Tanımı</label>
                         <input
                             id="input-cc-name"
                             type="text"
-                            placeholder="Örn: Bonus Platinum, Maximum Kartım"
+                            placeholder="Örn: Bonus Gold, Maximum, Axess"
                             value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            onChange={(e) => handleNameChange(e.target.value)}
                             required
                             autoFocus
                         />
+                        {nameCleanSuggestion && (
+                            <div className="name-clean-banner" id="name-clean-banner">
+                                <Sparkles size={13} />
+                                <span>Ağ etiketi algılandı: Kart adını <strong>&quot;{nameCleanSuggestion}&quot;</strong> olarak sadeleştirilsin mi?</span>
+                                <button type="button" onClick={applyCleanName} className="btn-clean-apply">
+                                    Sadeleştir
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="form-row">
@@ -239,22 +332,31 @@ export default function CreditCardModal({
                         </div>
                     </div>
 
+                    {/* Color Themes Palette */}
                     <div className="form-group" id="cc-color-palette-group">
-                        <label>Kart Rengi</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <label>Kart Renk Teması</label>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                {activeColorObj.name}
+                            </span>
+                        </div>
                         <div className="color-palette-grid" id="cc-color-palette-grid">
-                            {CARD_COLORS.map(c => (
-                                <button
-                                    key={c.id}
-                                    id={`btn-cc-color-${c.id}`}
-                                    type="button"
-                                    onClick={() => setColor(c.id)}
-                                    className={`color-swatch-btn ${color === c.id ? 'active' : ''}`}
-                                    style={{ background: c.bg }}
-                                    title={c.name}
-                                >
-                                    {color === c.id && <Check size={14} color="#fff" />}
-                                </button>
-                            ))}
+                            {availableColors.map(c => {
+                                const isCurrent = color === c.id;
+                                return (
+                                    <button
+                                        key={c.id}
+                                        id={`btn-cc-color-${c.id}`}
+                                        type="button"
+                                        onClick={() => setColor(c.id)}
+                                        className={`color-swatch-btn ${isCurrent ? 'active' : ''}`}
+                                        style={{ background: c.bg, border: `2px solid ${c.border}` }}
+                                        title={`${c.name} (${c.network ? c.network.toUpperCase() : 'Genel'})`}
+                                    >
+                                        {isCurrent && <Check size={14} color="#fff" />}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 

@@ -6,19 +6,20 @@ Likit, Next.js (App Router), Supabase (PostgreSQL), Tailwind CSS ve Recharts kul
 
 ## Core Value
 
-Güvenilir, kesintisiz ve net bir nakit akışı takibi sunmak; hem banka/nakit işlemlerini hem de kredi kartı ekstre/taksit yükümlülüklerini tek bir bütünleşik finansal projeksiyonda doğru tarihlerle göstermek.
+Güvenilir, kesintisiz ve net bir nakit akışı takibi sunmak; hem banka/nakit işlemlerini hem de kredi kartı ekstre/taksit yükümlülüklerini tek bir bütünleşik finansal projeksiyonda doğru tarihlerle göstermek; mobil cihazlarda bağımsız bir yerel uygulama konforunda kullanılabilmek.
 
-## Current Milestone: v1.2 Credit Card Support (Kredi Kartı Desteği)
+## Current Milestone: v1.4 Card Network Badges & Dynamic Card Theming (Kart İsimlerinden Network Etiketleme ve Dinamik Kart Renkleri)
 
-**Goal:** Kullanıcıların kredi kartlarını tanımlayabilmesi, tek çekim ve taksitli harcamalarını kartın hesap kesim ve son ödeme günlerine göre otomatik taksitlendirip nakit akışı grafiğine yansıtabilmesi.
+**Goal:** Kart isimlerinde yer alan "Troy", "Visa", "Mastercard" ibarelerinin isimden temizlenmesi, bu ibarelerin kart üzerinde ve işlem listelerinde zarif bir ödeme ağı etiketi/logosu (badge) olarak gösterilmesi ve kart renk/tema sisteminin bu ağ etiketine göre dinamik olarak yapılandırılması.
 
 **Target features:**
-- `likit_credit_cards` tablosu, CRUD işlemleri ve kart özeti hesaplama
-- `likit_transactions` tablosuna `card_id`, `purchase_date`, taksit alanlarının eklenmesi
-- Çoklu kredi kartı ekleme, limit ve kesim/son ödeme günleri yönetimi
-- Harcama formunda kredi kartı seçimi, taksit sayısı (1-12) ve anlık son ödeme/taksit projeksiyonu
-- İşlem listesinde kredi kartı ve taksit etiketleri, kart bazlı filtreleme
-- Kredi kartları sekmesi ile görsel kartlar, kullanılabilir limit çubuğu ve yaklaşan vadeler
+- `likit_credit_cards` tablosuna `card_network` desteği ve mevcut 7 kartın veritabanında isimlerinin temizlenip ağlarının atanması
+- Kart ağı tespit ve isim temizleme yardımcı fonksiyonları (`detectCardNetwork`, `cleanCardName`)
+- Troy (turkuaz/marine), Mastercard (ember/obsidian) ve Visa (royal/gold) dinamik renk temaları ve gradient paletleri
+- Vektörel SVG `CardNetworkBadge` bileşeni (kart üzeri kabartma logo, işlem listesi mikro rozet, form seçim hapları)
+- `CreditCardModal` içinde akıllı otomatik ağ tespiti, otomatik isim temizleme ve ağ bazlı renk paleti seçimi
+- `CreditCardsView`, `TransactionList` ve `TransactionForm` bileşenlerinde ağ rozeti entegrasyonu
+- Kapsamlı test paketi (`tests/cardNetwork.test.ts`) ve canlı DB testi
 
 ## Requirements
 
@@ -29,20 +30,20 @@ Güvenilir, kesintisiz ve net bir nakit akışı takibi sunmak; hem banka/nakit 
 - [x] Nakit akışı grafiği (Recharts) ve periyot navigasyonu
 - [x] **v1.0**: Supabase Keep-Alive via Vercel Cron (`/api/keep-alive` ve `vercel.json`)
 - [x] **v1.1**: Veritabanı temizleme ve migration mimarisini sadeleştirme (`DB-01` .. `DB-04`)
-- [x] **CC-01**: `likit_credit_cards` tablosu, indeksleri, RLS ve `likit_transactions` ilişkisi
-- [x] **CC-02**: Hesap kesim ve son ödeme günü hesaplama ve kuruş hassasiyetli taksit bölüştürme motoru (`creditCardUtils`)
-- [x] **CC-03**: Kredi kartı CRUD işlemleri (`actions.ts`) ve görsel kart yönetimi modalı (`CreditCardModal.tsx`)
-- [x] **CC-04**: Harcama formunda kredi kartı desteği, taksit seçimi ve otomatik son ödeme tarihi hesaplama (`TransactionForm.tsx`)
-- [x] **CC-05**: Görsel kartlar görünümü (`CreditCardsView.tsx`), kart borcu/limiti hesaplama ve işlem listesi kart filtreleme
+- [x] **v1.2**: Kredi kartı desteği (`CC-01` .. `CC-07`)
+- [x] **v1.3**: Android PWA & Native Mobile Experience (`PWA-01` .. `PWA-06`)
+- [x] **NET-01**: `likit_credit_cards` tablosuna `card_network` kolonu eklenmeli ve mevcut 7 kartın veritabanındaki isimleri temizlenip ağ değerleri (`troy`, `visa`, `mastercard`) ve temaları atanmalıdır.
+- [x] **NET-02**: `src/lib/types.ts` içinde `CardNetwork` tipi tanımlanmalı; `src/lib/creditCardUtils.ts` içinde `detectCardNetwork`, `cleanCardName` ve `NETWORK_THEMES` fonksiyonları geliştirilmeli ve testlerle doğrulanmalıdır.
+- [x] **NET-03**: Troy, Visa ve Mastercard için SVG bazlı `CardNetworkBadge` bileşeni geliştirilmeli; `CreditCardsView`, `TransactionList` ve `TransactionForm` bileşenlerine entegre edilmelidir.
+- [x] **NET-04**: `CreditCardModal` içinde etkileşimli ağ seçici, kart ismi yazılırken otomatik algılama/temizleme ve ağ bazlı renk paleti seçimi entegre edilmeli; tüm testler (`npm test`) ve `npm run build` hatasız tamamlanmalıdır.
 
 ### Active
 
-None (Tüm v1.2 gereksinimleri tamamlandı ve doğrulandı)
+None (Tüm v1.4 gereksinimleri tamamlandı ve doğrulandı)
 
 ### Out of Scope
 
-- Banka API'leri ile otomatik ekstre senkronizasyonu (Open Banking entegrasyonu)
-- Kredi kartı asgari tutar faiz simülasyonu
+- Otomatik BIN (ilk 6 hane) sorgulama API entegrasyonu (kullanıcı yalnızca son 4 haneyi girer, kart ağı isimden veya formdaki seçimden belirlenir)
 
 ## Context
 
@@ -50,15 +51,7 @@ None (Tüm v1.2 gereksinimleri tamamlandı ve doğrulandı)
 - **Database:** Supabase (PostgreSQL - Project Ref: `xwggnghdazogaxcmunci`)
 - **Deployment:** Vercel
 - **Test Runner:** Node.js native test runner (`tsx --test`)
-
-## Key Decisions
-
-| Decision | Rationale | Outcome |
-|----------|-----------|---------|
-| Son Ödeme Tarihi Odaklı Nakit Akışı | Kredi kartı harcaması yapıldığı gün değil, ekstrenin son ödeme tarihinde nakit hesaptan çıkar. Nakit akışı grafiğinde vadenin esas alınması projeksiyon doğruluğunu sağlar. | ✓ Good |
-| Kuruş Hassasiyetli Taksit Bölüştürme | 1000 TL / 3 taksit gibi bölmelerde kuruş kaybı önlenerek toplam tutarın birebir tutması sağlandı. | ✓ Good |
-| Soft Delete Kart Silme | Kart silindiğinde geçmiş taksit ve işlem kayıtlarının bozulmaması için `is_active: false` soft-delete uygulandı. | ✓ Good |
-| Bağımsız Sekmeli Dashboard | Nakit akışı ve Kredi Kartları arasında kolay geçiş sağlayan şık sekme tasarımı uygulandı. | ✓ Good |
+- **Design System:** Impeccable Craft UI, Dark Mode Glassmorphism, Modern Financial Gradient Themes
 
 ---
-*Last updated: 2026-11-10 after completing Milestone v1.2*
+*Last updated: 2026-11-10 after completing Milestone v1.4*

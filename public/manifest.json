@@ -1,24 +1,84 @@
 {
-    "name": "Likit – Nakit Akış Takibi",
-    "short_name": "Likit",
-    "description": "Nakit akışınızı kolayca takip edin. Gelir, gider ve bakiye tahminlerinizi tek bir ekranda görün.",
-    "start_url": "/",
-    "display": "standalone",
-    "background_color": "#0a0a14",
-    "theme_color": "#6366f1",
-    "orientation": "portrait-primary",
-    "icons": [
+  "id": "/?source=pwa",
+  "name": "Likit – Nakit Akış Takibi",
+  "short_name": "Likit",
+  "description": "Nakit akışınızı kolayca takip edin. Gelir, gider, kredi kartı ve bakiye tahminlerinizi tek ekranda görün.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a14",
+  "theme_color": "#0a0a14",
+  "categories": [
+    "finance",
+    "productivity"
+  ],
+  "lang": "tr",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Yeni İşlem Ekle",
+      "short_name": "İşlem Ekle",
+      "description": "Hızlıca yeni bir gelir veya gider ekleyin",
+      "url": "/?action=new-transaction",
+      "icons": [
         {
-            "src": "/icons/icon-192.svg",
-            "sizes": "192x192",
-            "type": "image/svg+xml",
-            "purpose": "any maskable"
-        },
-        {
-            "src": "/icons/icon-512.svg",
-            "sizes": "512x512",
-            "type": "image/svg+xml",
-            "purpose": "any maskable"
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
-    ]
+      ]
+    },
+    {
+      "name": "Kredi Kartları",
+      "short_name": "Kartlar",
+      "description": "Kredi kartlarınızı ve ekstrelerinizi görüntüleyin",
+      "url": "/?tab=credit_cards",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
 }
