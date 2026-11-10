@@ -308,8 +308,7 @@ export default function CreditCardsView({
                                                                 )}
                                                             </div>
                                                             <span className="transaction-date">
-                                                                Kesim (Nakit Akışı): {formatDate(t.transaction_date)}
-                                                                {t.due_date && ` · Son Ödeme: ${formatDate(t.due_date)}`}
+                                                                Son Ödeme (Nakit Akışı): {formatDate(t.transaction_date)}
                                                                 {t.purchase_date && ` · Harcama: ${formatDate(t.purchase_date)}`}
                                                             </span>
                                                         </div>

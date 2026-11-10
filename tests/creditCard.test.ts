@@ -59,6 +59,33 @@ test('calculateCardCutoffAndDueDate: user case 11 November -> 23 November (Satur
     });
 });
 
+test('generateCreditCardInstallments: Sağlam Kart Troy 1 November purchase has due date 18 November and is not completed', () => {
+    const card: CreditCard = {
+        id: '5b00766f-ccda-400b-aed9-7bb8fce8e01e',
+        name: 'Sağlam Kart Troy',
+        cutoff_day: 8,
+        due_day: 18,
+        credit_limit: 50000,
+        color: '#10b981',
+        is_active: true,
+        created_at: '2026-02-05T00:00:00Z',
+    };
+    const txns = generateCreditCardInstallments({
+        title: 'ekstre',
+        totalAmount: 7524.52,
+        purchaseDate: '2026-11-01',
+        totalInstallments: 1,
+        card,
+    });
+    assert.equal(txns.length, 1);
+    assert.equal(txns[0].title, 'ekstre');
+    assert.equal(txns[0].amount, 7524.52);
+    assert.equal(txns[0].purchase_date, '2026-11-01');
+    assert.equal(txns[0].due_date, '2026-11-18');
+    assert.equal(txns[0].transaction_date, '2026-11-18');
+    assert.equal(txns[0].is_completed, false);
+});
+
 test('calculateCardCutoffAndDueDate: due date automatically calculated (+10 days & weekday adjustment)', () => {
     const card = { cutoff_day: 25, due_day: 5 };
     // Purchase before cutoff: Cutoff 25 May -> 25 May + 10 days = 4 June (Thursday)
@@ -176,7 +203,7 @@ test('generateCreditCardInstallments creates correct transaction objects', () =>
     assert.strictEqual(installments.length, 3);
     assert.strictEqual(installments[0].title, 'Buzdolabı (1/3)');
     assert.strictEqual(installments[0].amount, 5000);
-    assert.strictEqual(installments[0].transaction_date, '2026-05-15'); // Cash flow hits on cutoff date
+    assert.strictEqual(installments[0].transaction_date, '2026-05-25'); // Cash flow deduction hits on payment due date (son ödeme tarihi)
     assert.strictEqual(installments[0].due_date, '2026-05-25');         // Official bank due date (May 25 Mon)
     assert.strictEqual(installments[0].purchase_date, '2026-05-10');
     assert.strictEqual(installments[0].card_id, 'card-123');
@@ -185,11 +212,11 @@ test('generateCreditCardInstallments creates correct transaction objects', () =>
     assert.strictEqual(installments[0].parent_transaction_id, 'parent-group-1');
 
     assert.strictEqual(installments[1].title, 'Buzdolabı (2/3)');
-    assert.strictEqual(installments[1].transaction_date, '2026-06-15');
+    assert.strictEqual(installments[1].transaction_date, '2026-06-25'); // June 25 Thu
     assert.strictEqual(installments[1].due_date, '2026-06-25');         // June 25 Thu
 
     assert.strictEqual(installments[2].title, 'Buzdolabı (3/3)');
-    assert.strictEqual(installments[2].transaction_date, '2026-07-15');
+    assert.strictEqual(installments[2].transaction_date, '2026-07-27'); // July 15 + 10 = July 25 (Sat) -> July 27 (Mon)
     assert.strictEqual(installments[2].due_date, '2026-07-27');         // July 15 + 10 = July 25 (Sat) -> July 27 (Mon)
 });
 
@@ -504,7 +531,7 @@ test('calculateInstallmentCutoffDates: generates sequential statement cutoff dat
     assert.strictEqual(dates[2], '2026-07-15');
 });
 
-test('cash flow daily balances: credit card installments affect balance on statement cutoff dates, not purchase date', () => {
+test('cash flow daily balances: credit card installments affect balance on payment due dates, not purchase or cutoff date', () => {
     const mockCard: CreditCard = {
         id: 'card-cf',
         created_at: '2026-01-01',
@@ -529,7 +556,7 @@ test('cash flow daily balances: credit card installments affect balance on state
         type: 'income',
     };
 
-    // Multi-installment expense purchased on May 10th: 3,000 TL in 3 installments (1000 TL each on cutoff dates May 15, Jun 15, Jul 15)
+    // Multi-installment expense purchased on May 10th: 3,000 TL in 3 installments (1000 TL each on due dates May 25, Jun 25, Jul 27)
     const installments = generateCreditCardInstallments({
         title: 'Telefon',
         totalAmount: 3000,
@@ -552,19 +579,19 @@ test('cash flow daily balances: credit card installments affect balance on state
     const end = new Date(2026, 4, 30);  // May 30
     const balances = calculateDailyBalances(allTxns, start, end);
 
-    // On May 10 (purchase date), balance is STILL 10,000 because payment hits on cutoff date
+    // On May 10 (purchase date), balance is STILL 10,000 because payment hits on due date
     const may10 = balances.find((b: { date: string }) => b.date === '2026-05-10');
     assert.strictEqual(may10.balance, 10000);
 
-    // On May 14 (day before cutoff date), balance is STILL 10,000
-    const may14 = balances.find((b: { date: string }) => b.date === '2026-05-14');
-    assert.strictEqual(may14.balance, 10000);
-
-    // On May 15 (statement cutoff date of installment 1), balance drops by 1,000 to 9,000!
+    // On May 15 (statement cutoff date), balance is STILL 10,000 because cash leaves on payment due date
     const may15 = balances.find((b: { date: string }) => b.date === '2026-05-15');
-    assert.strictEqual(may15.balance, 9000);
+    assert.strictEqual(may15.balance, 10000);
 
-    // On May 25 (due date), balance is already deducted at cutoff, so it remains 9,000
+    // On May 24 (day before due date), balance is STILL 10,000
+    const may24 = balances.find((b: { date: string }) => b.date === '2026-05-24');
+    assert.strictEqual(may24.balance, 10000);
+
+    // On May 25 (payment due date of installment 1), balance drops by 1,000 to 9,000!
     const may25 = balances.find((b: { date: string }) => b.date === '2026-05-25');
     assert.strictEqual(may25.balance, 9000);
 

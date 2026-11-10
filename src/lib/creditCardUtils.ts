@@ -272,8 +272,8 @@ export function calculateInstallmentCutoffDates(
 
 /**
  * Generates transaction records for a credit card purchase (one-time or multi-installment).
- * The effective transaction_date is the statement cutoff date (hesap kesim tarihi),
- * while due_date preserves the official bank payment deadline.
+ * The effective transaction_date is the payment due date (son ödeme tarihi),
+ * when money actually leaves the bank account.
  */
 export function generateCreditCardInstallments({
     title,
@@ -292,7 +292,6 @@ export function generateCreditCardInstallments({
 }): Array<Omit<Transaction, 'id' | 'created_at'>> {
     const installmentsCount = Math.max(1, totalInstallments);
     const amounts = distributeInstallmentAmounts(totalAmount, installmentsCount);
-    const cutoffDates = calculateInstallmentCutoffDates(card, purchaseDate, installmentsCount);
     const dueDates = calculateInstallmentDueDates(card, purchaseDate, installmentsCount);
     const parentId = parentTransactionId || generateUUID();
 
@@ -305,7 +304,7 @@ export function generateCreditCardInstallments({
         return {
             title: installmentTitle,
             amount,
-            transaction_date: cutoffDates[index], // Cash flow deduction hits on statement cutoff date
+            transaction_date: dueDates[index],   // Cash flow deduction hits on payment due date (son ödeme tarihi)
             due_date: dueDates[index],           // Bank payment deadline
             purchase_date: purchaseDate,
             type: 'expense' as const,

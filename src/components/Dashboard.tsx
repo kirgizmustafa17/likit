@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Plus, Droplets, TrendingUp, TrendingDown, Wallet, CreditCard as CardIcon, BarChart3, Repeat } from 'lucide-react';
-import { Transaction, CreditCard, RecurringRule } from '@/lib/types';
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, Droplets, TrendingUp, TrendingDown, Wallet, CreditCard as CardIcon, BarChart3 } from 'lucide-react';
+import { Transaction, CreditCard } from '@/lib/types';
 import {
     getTransactions,
     addTransaction,
@@ -15,12 +15,6 @@ import {
     updateCreditCard,
     deleteCreditCard,
     addCreditCardExpense,
-    getRecurringRules,
-    addRecurringRule,
-    updateRecurringRule,
-    deleteRecurringRule,
-    toggleRecurringRuleActive,
-    syncAllRecurringRules,
 } from '@/lib/actions';
 import { calculateDailyBalances, getPeriodRange, formatCurrency, getTodayStr } from '@/lib/utils';
 import { computeCardSummaries } from '@/lib/creditCardUtils';
@@ -31,17 +25,14 @@ import PeriodNavigator from './PeriodNavigator';
 import CompleteModal from './CompleteModal';
 import CreditCardsView from './CreditCardsView';
 import CreditCardModal from './CreditCardModal';
-import RecurringTransactionsView from './RecurringTransactionsView';
-import RecurringRuleModal from './RecurringRuleModal';
 
 export default function Dashboard() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [cards, setCards] = useState<CreditCard[]>([]);
-    const [recurringRules, setRecurringRules] = useState<RecurringRule[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Active View Tab: Cash Flow vs Credit Cards vs Recurring
-    const [activeTab, setActiveTab] = useState<'cashflow' | 'credit_cards' | 'recurring'>('cashflow');
+    // Active View Tab: Cash Flow vs Credit Cards
+    const [activeTab, setActiveTab] = useState<'cashflow' | 'credit_cards'>('cashflow');
 
     // Period / Chart state
     const [periodOffset, setPeriodOffset] = useState(0);
@@ -58,35 +49,14 @@ export default function Dashboard() {
     const [isCardModalOpen, setIsCardModalOpen] = useState(false);
     const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
 
-    const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
-    const [editingRule, setEditingRule] = useState<RecurringRule | null>(null);
-
-    const syncDoneRef = useRef(false);
-
     const loadData = useCallback(async () => {
         try {
-            const [txnsData, cardsData, rulesData] = await Promise.all([
+            const [txnsData, cardsData] = await Promise.all([
                 getTransactions(),
                 getCreditCards(),
-                getRecurringRules(),
             ]);
             setTransactions(txnsData);
             setCards(cardsData);
-            setRecurringRules(rulesData);
-
-            // One-time automatic background sync of recurring transactions if needed
-            if (!syncDoneRef.current && rulesData.length > 0) {
-                syncDoneRef.current = true;
-                const created = await syncAllRecurringRules({
-                    rules: rulesData,
-                    existingTransactions: txnsData,
-                    cards: cardsData,
-                });
-                if (created > 0) {
-                    const refreshedTxns = await getTransactions();
-                    setTransactions(refreshedTxns);
-                }
-            }
         } catch (error) {
             console.error('Data load error:', error);
         } finally {
@@ -97,7 +67,12 @@ export default function Dashboard() {
     // Auto-complete past-due transactions
     const autoCompleteTransactions = useCallback(async (txns: Transaction[]) => {
         const today = getTodayStr();
-        const pastDue = txns.filter(t => !t.is_completed && t.transaction_date < today);
+        const pastDue = txns.filter(t => {
+            if (t.is_completed) return false;
+            // For credit card purchases, the real payment/cash-out date is due_date
+            const effectiveDueDate = t.card_id ? (t.due_date || t.transaction_date) : t.transaction_date;
+            return effectiveDueDate < today;
+        });
 
         if (pastDue.length === 0) return;
 
@@ -121,7 +96,11 @@ export default function Dashboard() {
     useEffect(() => {
         if (!loading && transactions.length > 0) {
             const today = getTodayStr();
-            const hasPastDue = transactions.some(t => !t.is_completed && t.transaction_date < today);
+            const hasPastDue = transactions.some(t => {
+                if (t.is_completed) return false;
+                const effectiveDueDate = t.card_id ? (t.due_date || t.transaction_date) : t.transaction_date;
+                return effectiveDueDate < today;
+            });
             if (hasPastDue) {
                 autoCompleteTransactions(transactions);
             }
@@ -298,61 +277,6 @@ export default function Dashboard() {
         setIsFormOpen(true);
     };
 
-    // Recurring Rules Handlers
-    const handleAddRecurringRule = async (ruleData: Omit<RecurringRule, 'id' | 'created_at'>) => {
-        try {
-            await addRecurringRule(ruleData, cards);
-            await loadData();
-            setIsRecurringModalOpen(false);
-        } catch (error) {
-            console.error('Add recurring rule error:', error);
-        }
-    };
-
-    const handleUpdateRecurringRule = async (id: string, updates: Partial<RecurringRule>) => {
-        try {
-            await updateRecurringRule(id, updates);
-            await loadData();
-            setIsRecurringModalOpen(false);
-            setEditingRule(null);
-        } catch (error) {
-            console.error('Update recurring rule error:', error);
-        }
-    };
-
-    const handleDeleteRecurringRule = async (id: string, rule: RecurringRule) => {
-        const deleteFuture = confirm(
-            `"${rule.title}" düzenli işlem kuralını silmek üzeresiniz.\n\n• Gelecek planlanan tekrarları da SİLMEK için: "Tamam"\n• Yalnızca kuralı silip geçmiş ve mevcut işlemleri KORUMAK için: "İptal"`
-        );
-        try {
-            await deleteRecurringRule(id, deleteFuture);
-            await loadData();
-        } catch (error) {
-            console.error('Delete recurring rule error:', error);
-        }
-    };
-
-    const handleToggleRecurringActive = async (id: string, isActive: boolean) => {
-        try {
-            await toggleRecurringRuleActive(id, isActive);
-            if (isActive) {
-                await syncAllRecurringRules({ cards });
-            }
-            await loadData();
-        } catch (error) {
-            console.error('Toggle recurring active error:', error);
-        }
-    };
-
-    const handleSyncAllRecurring = async () => {
-        await syncAllRecurringRules({
-            rules: recurringRules,
-            existingTransactions: transactions,
-            cards,
-        });
-        await loadData();
-    };
-
     if (loading) {
         return (
             <div className="loading-screen" id="loading-screen">
@@ -361,8 +285,6 @@ export default function Dashboard() {
             </div>
         );
     }
-
-    const activeRulesCount = recurringRules.filter(r => r.is_active).length;
 
     return (
         <div className="dashboard" id="dashboard-main">
@@ -394,19 +316,6 @@ export default function Dashboard() {
                         <span>Kredi Kartları</span>
                         {cards.length > 0 && <span className="tab-badge" id="badge-cards-count">{cards.length}</span>}
                     </button>
-                    <button
-                        id="nav-tab-recurring"
-                        className={`tab-btn ${activeTab === 'recurring' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('recurring')}
-                    >
-                        <Repeat size={16} />
-                        <span>Düzenli İşlemler</span>
-                        {activeRulesCount > 0 && (
-                            <span className="tab-badge" id="badge-recurring-count">
-                                {activeRulesCount}
-                            </span>
-                        )}
-                    </button>
                 </div>
 
                 <div className="header-actions" id="header-actions">
@@ -435,19 +344,6 @@ export default function Dashboard() {
                         >
                             <Plus size={20} />
                             <span>Yeni Kart</span>
-                        </button>
-                    )}
-                    {activeTab === 'recurring' && (
-                        <button
-                            id="btn-header-add-recurring"
-                            onClick={() => {
-                                setEditingRule(null);
-                                setIsRecurringModalOpen(true);
-                            }}
-                            className="btn-add"
-                        >
-                            <Plus size={20} />
-                            <span>Yeni Düzenli İşlem</span>
                         </button>
                     )}
                 </div>
@@ -551,25 +447,6 @@ export default function Dashboard() {
                 />
             )}
 
-            {activeTab === 'recurring' && (
-                /* Recurring Transactions View */
-                <RecurringTransactionsView
-                    rules={recurringRules}
-                    cards={cards}
-                    onAddRule={() => {
-                        setEditingRule(null);
-                        setIsRecurringModalOpen(true);
-                    }}
-                    onEditRule={(rule) => {
-                        setEditingRule(rule);
-                        setIsRecurringModalOpen(true);
-                    }}
-                    onDeleteRule={handleDeleteRecurringRule}
-                    onToggleActive={handleToggleRecurringActive}
-                    onSyncAll={handleSyncAllRecurring}
-                />
-            )}
-
             {/* Modals */}
             <TransactionForm
                 isOpen={isFormOpen}
@@ -604,18 +481,6 @@ export default function Dashboard() {
                 onSubmit={handleAddCard}
                 editingCard={editingCard}
                 onUpdate={handleUpdateCard}
-            />
-
-            <RecurringRuleModal
-                isOpen={isRecurringModalOpen}
-                onClose={() => {
-                    setIsRecurringModalOpen(false);
-                    setEditingRule(null);
-                }}
-                onSubmit={handleAddRecurringRule}
-                editingRule={editingRule}
-                onUpdate={handleUpdateRecurringRule}
-                cards={cards}
             />
         </div>
     );

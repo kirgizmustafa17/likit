@@ -47,7 +47,6 @@ test('Supabase Live DB Integration: Credit Cards and Transactions flow', async (
         const parentId = installments[0].parent_transaction_id;
         assert.ok(parentId, 'Installment must have a parent_transaction_id');
 
-        const expectedCutoffs = ['2026-05-15', '2026-06-15', '2026-07-15'];
         const expectedDues = ['2026-05-25', '2026-06-25', '2026-07-27'];
 
         installments.forEach((inst, index) => {
@@ -56,7 +55,7 @@ test('Supabase Live DB Integration: Credit Cards and Transactions flow', async (
             assert.equal(inst.card_id, testCard.id);
             assert.equal(inst.parent_transaction_id, parentId);
             assert.equal(Number(inst.amount), 1000);
-            assert.equal(inst.transaction_date, expectedCutoffs[index], 'Transaction date must be the cutoff date');
+            assert.equal(inst.transaction_date, expectedDues[index], 'Transaction date must be the payment due date');
             assert.equal(inst.due_date, expectedDues[index], 'Due date must be preserved');
         });
 

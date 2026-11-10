@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Edit3, Trash2, CheckCircle2, Clock, ArrowUpCircle, ArrowDownCircle, ChevronDown, ChevronRight, CreditCard as CardIcon } from 'lucide-react';
 import { Transaction, CreditCard } from '@/lib/types';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
-import { getCategoryLabel, getCategoryIcon } from '@/lib/recurringUtils';
 
 interface TransactionListProps {
     transactions: Transaction[];
@@ -176,11 +175,6 @@ function TransactionItem({
                 <div className="transaction-info">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         <span className="transaction-title" id={`tx-title-${t.id}`}>{t.title}</span>
-                        {t.recurring_rule_id && (
-                            <span className="recurring-tag-badge" id={`tx-recurring-badge-${t.id}`}>
-                                {getCategoryIcon(t.category)} {getCategoryLabel(t.category)}
-                            </span>
-                        )}
                         {card && (
                             <span className="cc-tag-badge" id={`tx-badge-card-${t.id}`}>
                                 💳 {card.name}
@@ -195,20 +189,15 @@ function TransactionItem({
                     <span className="transaction-date" id={`tx-date-${t.id}`}>
                         {card ? (
                             <>
-                                <span>Kesim: {formatDate(effectiveDate)}</span>
-                                {t.due_date && (
+                                <span>Son Ödeme: {formatDate(effectiveDate)}</span>
+                                {t.purchase_date && t.purchase_date !== effectiveDate && (
                                     <span style={{ marginLeft: '6px', color: 'var(--text-muted)' }}>
-                                        · Son Ödeme: {formatDate(t.due_date)}
+                                        · Harcama: {formatDate(t.purchase_date)}
                                     </span>
                                 )}
                             </>
                         ) : (
                             formatDate(effectiveDate)
-                        )}
-                        {t.purchase_date && t.purchase_date !== effectiveDate && (
-                            <span style={{ marginLeft: '6px', color: 'var(--text-muted)' }}>
-                                (Harcama: {formatDate(t.purchase_date)})
-                            </span>
                         )}
                     </span>
                     {t.is_completed && t.completed_date && t.completed_date !== t.transaction_date && (

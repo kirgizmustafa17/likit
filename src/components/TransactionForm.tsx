@@ -3,11 +3,10 @@
 import { useState, useEffect } from 'react';
 import { X, CreditCard as CardIcon, Wallet } from 'lucide-react';
 import { Transaction, CreditCard } from '@/lib/types';
-import { cn, getTodayStr } from '@/lib/utils';
+import { cn, getTodayStr, formatDate } from '@/lib/utils';
 import {
     calculateCardCutoffAndDueDate,
     calculateInstallmentDueDates,
-    calculateInstallmentCutoffDates,
 } from '@/lib/creditCardUtils';
 
 interface TransactionFormProps {
@@ -111,7 +110,7 @@ export default function TransactionForm({
     const selectedCard = cards.find(c => c.id === selectedCardId) || (cards.length > 0 ? cards[0] : undefined);
     const parsedInstallments = Math.max(1, parseInt(installments, 10) || 1);
 
-    // Live calculation of cutoff date and due date
+    // Live calculation of payment due date and cutoff date
     let calculatedCutoffDate = '';
     let calculatedDueDate = '';
 
@@ -121,21 +120,14 @@ export default function TransactionForm({
 
         if (isExistingInstallment) {
             // For an existing installment, calculate dates for THIS specific installment number
-            const allCutoffDates = calculateInstallmentCutoffDates(
-                selectedCard,
-                purchaseDate,
-                editingTransaction!.total_installments!
-            );
             const allDueDates = calculateInstallmentDueDates(
                 selectedCard,
                 purchaseDate,
                 editingTransaction!.total_installments!
             );
             const installmentIdx = (editingTransaction!.installment_no || 1) - 1;
-            calculatedCutoffDate = allCutoffDates[installmentIdx] || editingTransaction!.transaction_date;
             calculatedDueDate = allDueDates[installmentIdx] || editingTransaction!.due_date || cycle.dueDate;
         } else {
-            calculatedCutoffDate = cycle.cutoffDate;
             calculatedDueDate = cycle.dueDate;
         }
     }
@@ -145,8 +137,8 @@ export default function TransactionForm({
         if (!title || !amount) return;
 
         const isCC = type === 'expense' && paymentMethod === 'credit_card' && Boolean(selectedCard);
-        // Effective transaction date is calculated cutoff date for credit cards, or user date for cash
-        const effectiveDate = isCC && calculatedCutoffDate ? calculatedCutoffDate : (date || getTodayStr());
+        // Effective transaction date is calculated payment due date (son ödeme tarihi) for credit cards, or user date for cash
+        const effectiveDate = isCC && calculatedDueDate ? calculatedDueDate : (date || getTodayStr());
 
         if (editingTransaction && onUpdate) {
             onUpdate(editingTransaction.id, {
@@ -367,6 +359,40 @@ export default function TransactionForm({
                                     </div>
                                 )}
                             </div>
+
+                            {/* Credit Card Due Date and Cutoff Feedback */}
+                            {selectedCard && calculatedDueDate && (
+                                <div
+                                    id="tx-cc-due-date-preview"
+                                    style={{
+                                        marginTop: '12px',
+                                        padding: '12px 14px',
+                                        borderRadius: '8px',
+                                        background: 'rgba(99, 102, 241, 0.08)',
+                                        border: '1px solid rgba(99, 102, 241, 0.2)',
+                                        fontSize: '13px',
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#818cf8', fontWeight: 600, marginBottom: '4px' }}>
+                                        <CardIcon size={14} />
+                                        <span>Hesap Kesim ve Son Ödeme Bilgisi</span>
+                                    </div>
+                                    <div style={{ color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                                        <div>
+                                            <strong>Son Ödeme Tarihi:</strong>{' '}
+                                            <span style={{ color: '#34d399', fontWeight: 600 }}>{formatDate(calculatedDueDate)}</span>
+                                            {calculatedCutoffDate && (
+                                                <span style={{ color: 'var(--text-muted)', fontSize: '11px', marginLeft: '6px' }}>
+                                                    (Hesap Kesim: {formatDate(calculatedCutoffDate)})
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                            Bu harcama nakit akışı bakiyenize harcama gününde değil, kartın <strong>son ödeme tarihinde</strong> ({formatDate(calculatedDueDate)}) yansıtılır.
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -380,6 +406,11 @@ export default function TransactionForm({
                             />
                             <span>Gerçekleşti (Ödendi / Hesaptan Çıktı)</span>
                         </label>
+                        {paymentMethod === 'credit_card' && calculatedDueDate && calculatedDueDate >= getTodayStr() && !isCompleted && (
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '4px', marginLeft: '24px' }}>
+                                💡 Son ödeme tarihi ({formatDate(calculatedDueDate)}) henüz gelmediği için bu işlem planlanan olarak kalacaktır.
+                            </span>
+                        )}
                     </div>
 
                     <button type="submit" id="btn-submit-transaction" className="btn-primary">
