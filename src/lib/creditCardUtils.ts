@@ -33,6 +33,36 @@ export function generateUUID(): string {
 }
 
 /**
+ * Adjusts a date so that if it falls on a weekend (Saturday or Sunday),
+ * it shifts forward to the next business weekday (Monday).
+ */
+export function adjustToNextWeekday(date: Date): Date {
+    const result = new Date(date);
+    const dayOfWeek = result.getDay(); // 0 = Sun, 6 = Sat
+    if (dayOfWeek === 6) {
+        // Saturday -> move to Monday (+2 days)
+        result.setDate(result.getDate() + 2);
+    } else if (dayOfWeek === 0) {
+        // Sunday -> move to Monday (+1 day)
+        result.setDate(result.getDate() + 1);
+    }
+    return result;
+}
+
+/**
+ * Calculates the official payment due date from a statement cutoff date:
+ * Rule: Cutoff date + 10 calendar days, shifted to the next weekday if falling on a weekend.
+ * Example: Cutoff on 11 November -> +10 days is 21 November (Saturday) -> shifted to 23 November (Monday).
+ */
+export function calculateDueDateFromCutoff(cutoffDateStr: string): string {
+    const [year, month, day] = cutoffDateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setDate(date.getDate() + 10);
+    const adjusted = adjustToNextWeekday(date);
+    return toDateStr(adjusted.getFullYear(), adjusted.getMonth() + 1, adjusted.getDate());
+}
+
+/**
  * Calculates the statement cutoff date and payment due date for a purchase made on a card.
  * 
  * Rules:
@@ -41,12 +71,12 @@ export function generateUUID(): string {
  * 2. If purchase day > cutoff_day:
  *    The statement cutoff is in the NEXT month.
  * 3. Due date:
- *    - If due_day > cutoff_day: due date is in the SAME month as cutoff.
- *    - If due_day <= cutoff_day: due date is in the NEXT month following cutoff.
+ *    Automatically calculated as statement cutoff date + 10 calendar days.
+ *    If that falls on a weekend, it automatically shifts to the following Monday.
  * 4. All days are clamped to the month's maximum days (e.g. 31 clamped to 28/29 in Feb, 30 in Apr/Jun/Sep/Nov).
  */
 export function calculateCardCutoffAndDueDate(
-    card: Pick<CreditCard, 'cutoff_day' | 'due_day'>,
+    card: Pick<CreditCard, 'cutoff_day'> & Partial<Pick<CreditCard, 'due_day'>>,
     purchaseDateStr: string
 ): { cutoffDate: string; dueDate: string } {
     const [pYearStr, pMonthStr, pDayStr] = purchaseDateStr.split('-');
@@ -71,23 +101,8 @@ export function calculateCardCutoffAndDueDate(
     const cutoffDay = Math.min(card.cutoff_day, maxDaysCutoff);
     const cutoffDate = toDateStr(cutoffYear, cutoffMonth, cutoffDay);
 
-    // Determine due month and year
-    let dueYear = cutoffYear;
-    let dueMonth = cutoffMonth;
-
-    if (card.due_day <= card.cutoff_day) {
-        // Due date is in next month
-        if (dueMonth === 12) {
-            dueYear += 1;
-            dueMonth = 1;
-        } else {
-            dueMonth += 1;
-        }
-    }
-
-    const maxDaysDue = getDaysInMonth(dueYear, dueMonth);
-    const dueDay = Math.min(card.due_day, maxDaysDue);
-    const dueDate = toDateStr(dueYear, dueMonth, dueDay);
+    // Automatic due date: Cutoff + 10 days, shifted to next weekday if weekend
+    const dueDate = calculateDueDateFromCutoff(cutoffDate);
 
     return { cutoffDate, dueDate };
 }
@@ -121,17 +136,55 @@ export function getNextDateForDay(targetDay: number, fromDateStr?: string): stri
 
 /**
  * Calculates next upcoming cutoff and due date for card summary display.
- * Tracks each date independently so an upcoming payment due date in the current
- * cycle is never skipped even if the cutoff date has already passed.
+ * Determines the relevant statement cutoff and its +10 day weekday due date.
  */
 export function calculateNextCardCycle(
-    card: Pick<CreditCard, 'cutoff_day' | 'due_day'>,
+    card: Pick<CreditCard, 'cutoff_day'> & Partial<Pick<CreditCard, 'due_day'>>,
     fromDateStr?: string
 ): { nextCutoffDate: string; nextDueDate: string } {
     const baseDate = fromDateStr || getTodayStr();
+    const [yearStr, monthStr] = baseDate.split('-');
+    const baseYear = parseInt(yearStr, 10);
+    const baseMonth = parseInt(monthStr, 10);
+
+    // 1. Current month's cutoff date
+    const maxDaysCurrent = getDaysInMonth(baseYear, baseMonth);
+    const thisMonthCutoffDay = Math.min(card.cutoff_day, maxDaysCurrent);
+    const thisMonthCutoffDate = toDateStr(baseYear, baseMonth, thisMonthCutoffDay);
+    const thisMonthDueDate = calculateDueDateFromCutoff(thisMonthCutoffDate);
+
+    // 2. Next month's cutoff date
+    let nextMonthYear = baseYear;
+    let nextMonth = baseMonth + 1;
+    if (nextMonth > 12) {
+        nextMonth = 1;
+        nextMonthYear += 1;
+    }
+    const maxDaysNext = getDaysInMonth(nextMonthYear, nextMonth);
+    const nextMonthCutoffDay = Math.min(card.cutoff_day, maxDaysNext);
+    const nextMonthCutoffDate = toDateStr(nextMonthYear, nextMonth, nextMonthCutoffDay);
+    const nextMonthDueDate = calculateDueDateFromCutoff(nextMonthCutoffDate);
+
+    // If today is on or before this month's cutoff:
+    if (baseDate <= thisMonthCutoffDate) {
+        return {
+            nextCutoffDate: thisMonthCutoffDate,
+            nextDueDate: thisMonthDueDate,
+        };
+    }
+
+    // Cutoff for this month has passed. If today is on or before this statement's due date:
+    if (baseDate <= thisMonthDueDate) {
+        return {
+            nextCutoffDate: nextMonthCutoffDate,
+            nextDueDate: thisMonthDueDate,
+        };
+    }
+
+    // Both this month's cutoff and due date have passed:
     return {
-        nextCutoffDate: getNextDateForDay(card.cutoff_day, baseDate),
-        nextDueDate: getNextDateForDay(card.due_day, baseDate),
+        nextCutoffDate: nextMonthCutoffDate,
+        nextDueDate: nextMonthDueDate,
     };
 }
 
@@ -166,39 +219,16 @@ export function distributeInstallmentAmounts(
 
 /**
  * Calculates due dates for all installments of a purchase.
+ * Each installment's due date is automatically calculated from its corresponding
+ * statement cutoff date: Cutoff + 10 calendar days, shifted to the next weekday if weekend.
  */
 export function calculateInstallmentDueDates(
-    card: Pick<CreditCard, 'cutoff_day' | 'due_day'>,
+    card: Pick<CreditCard, 'cutoff_day'> & Partial<Pick<CreditCard, 'due_day'>>,
     purchaseDateStr: string,
     totalInstallments: number
 ): string[] {
-    const { dueDate: firstDueDate } = calculateCardCutoffAndDueDate(card, purchaseDateStr);
-
-    if (totalInstallments <= 1) {
-        return [firstDueDate];
-    }
-
-    const [firstYearStr, firstMonthStr] = firstDueDate.split('-');
-    const firstYear = parseInt(firstYearStr, 10);
-    const firstMonth = parseInt(firstMonthStr, 10);
-
-    const dueDates: string[] = [];
-
-    for (let i = 0; i < totalInstallments; i++) {
-        let targetMonth = firstMonth + i;
-        let targetYear = firstYear;
-
-        while (targetMonth > 12) {
-            targetMonth -= 12;
-            targetYear += 1;
-        }
-
-        const maxDays = getDaysInMonth(targetYear, targetMonth);
-        const day = Math.min(card.due_day, maxDays);
-        dueDates.push(toDateStr(targetYear, targetMonth, day));
-    }
-
-    return dueDates;
+    const cutoffDates = calculateInstallmentCutoffDates(card, purchaseDateStr, totalInstallments);
+    return cutoffDates.map(cDate => calculateDueDateFromCutoff(cDate));
 }
 
 /**
@@ -207,7 +237,7 @@ export function calculateInstallmentDueDates(
  * the bank account on the statement cutoff date.
  */
 export function calculateInstallmentCutoffDates(
-    card: Pick<CreditCard, 'cutoff_day' | 'due_day'>,
+    card: Pick<CreditCard, 'cutoff_day'> & Partial<Pick<CreditCard, 'due_day'>>,
     purchaseDateStr: string,
     totalInstallments: number
 ): string[] {

@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, CreditCard as CardIcon, Wallet, Calendar } from 'lucide-react';
+import { X, CreditCard as CardIcon, Wallet } from 'lucide-react';
 import { Transaction, CreditCard } from '@/lib/types';
-import { cn, getTodayStr, formatCurrency, formatDate } from '@/lib/utils';
+import { cn, getTodayStr } from '@/lib/utils';
 import {
     calculateCardCutoffAndDueDate,
-    distributeInstallmentAmounts,
     calculateInstallmentDueDates,
     calculateInstallmentCutoffDates,
 } from '@/lib/creditCardUtils';
@@ -110,13 +109,11 @@ export default function TransactionForm({
 
     // When card or purchase date changes in credit_card mode, update the effective transaction_date (due date)
     const selectedCard = cards.find(c => c.id === selectedCardId) || (cards.length > 0 ? cards[0] : undefined);
-    const parsedAmount = parseFloat(amount) || 0;
     const parsedInstallments = Math.max(1, parseInt(installments, 10) || 1);
 
-    // Live calculation of due date and installment breakdown
+    // Live calculation of cutoff date and due date
     let calculatedCutoffDate = '';
     let calculatedDueDate = '';
-    let installmentAmounts: number[] = [];
 
     if (paymentMethod === 'credit_card' && selectedCard && purchaseDate) {
         const cycle = calculateCardCutoffAndDueDate(selectedCard, purchaseDate);
@@ -140,9 +137,6 @@ export default function TransactionForm({
         } else {
             calculatedCutoffDate = cycle.cutoffDate;
             calculatedDueDate = cycle.dueDate;
-            if (parsedAmount > 0) {
-                installmentAmounts = distributeInstallmentAmounts(parsedAmount, parsedInstallments);
-            }
         }
     }
 
@@ -195,20 +189,20 @@ export default function TransactionForm({
     if (!isOpen) return null;
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay" id="modal-transaction-form" onClick={onClose}>
+            <div className="modal-content" id="modal-transaction-dialog" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>{editingTransaction ? 'İşlemi Düzenle' : 'Yeni İşlem'}</h2>
-                    <button onClick={onClose} className="modal-close-btn" type="button">
+                    <h2 id="modal-transaction-title">{editingTransaction ? 'İşlemi Düzenle' : 'Yeni İşlem'}</h2>
+                    <button id="btn-close-tx-modal" onClick={onClose} className="modal-close-btn" type="button">
                         <X size={20} />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="form">
+                <form onSubmit={handleSubmit} className="form" id="form-transaction">
                     <div className="form-group">
-                        <label htmlFor="title">Açıklama</label>
+                        <label htmlFor="input-tx-title">Açıklama</label>
                         <input
-                            id="title"
+                            id="input-tx-title"
                             type="text"
                             placeholder="Örn: Market alışverişi, Kira, Elektronik"
                             value={title}
@@ -220,9 +214,9 @@ export default function TransactionForm({
 
                     <div className="form-row">
                         <div className="form-group">
-                            <label htmlFor="amount">Toplam Tutar (₺)</label>
+                            <label htmlFor="input-tx-amount">Toplam Tutar (₺)</label>
                             <input
-                                id="amount"
+                                id="input-tx-amount"
                                 type="number"
                                 placeholder="0"
                                 value={amount}
@@ -235,9 +229,9 @@ export default function TransactionForm({
 
                         {paymentMethod === 'cash' || type === 'income' ? (
                             <div className="form-group">
-                                <label htmlFor="date">Tarih</label>
+                                <label htmlFor="input-tx-date">Tarih</label>
                                 <input
-                                    id="date"
+                                    id="input-tx-date"
                                     type="date"
                                     value={date}
                                     onChange={(e) => setDate(e.target.value)}
@@ -246,9 +240,9 @@ export default function TransactionForm({
                             </div>
                         ) : (
                             <div className="form-group">
-                                <label htmlFor="purchase-date">Harcama Tarihi</label>
+                                <label htmlFor="input-tx-purchase-date">Harcama Tarihi</label>
                                 <input
-                                    id="purchase-date"
+                                    id="input-tx-purchase-date"
                                     type="date"
                                     value={purchaseDate}
                                     onChange={(e) => setPurchaseDate(e.target.value)}
@@ -260,9 +254,10 @@ export default function TransactionForm({
 
                     <div className="form-group">
                         <label>Tür</label>
-                        <div className="type-toggle">
+                        <div className="type-toggle" id="tx-type-toggle">
                             <button
                                 type="button"
+                                id="btn-tx-type-income"
                                 className={cn('type-btn', type === 'income' && 'type-btn-active-income')}
                                 onClick={() => {
                                     setType('income');
@@ -273,6 +268,7 @@ export default function TransactionForm({
                             </button>
                             <button
                                 type="button"
+                                id="btn-tx-type-expense"
                                 className={cn('type-btn', type === 'expense' && 'type-btn-active-expense')}
                                 onClick={() => setType('expense')}
                             >
@@ -285,9 +281,10 @@ export default function TransactionForm({
                     {type === 'expense' && (
                         <div className="form-group">
                             <label>Ödeme Yöntemi</label>
-                            <div className="type-toggle">
+                            <div className="type-toggle" id="tx-method-toggle">
                                 <button
                                     type="button"
+                                    id="btn-method-cash"
                                     className={cn('type-btn', paymentMethod === 'cash' && 'type-btn-active-cash')}
                                     onClick={() => setPaymentMethod('cash')}
                                 >
@@ -296,6 +293,7 @@ export default function TransactionForm({
                                 </button>
                                 <button
                                     type="button"
+                                    id="btn-method-card"
                                     className={cn('type-btn', paymentMethod === 'credit_card' && 'type-btn-active-cc')}
                                     onClick={() => setPaymentMethod('credit_card')}
                                     disabled={cards.length === 0}
@@ -311,12 +309,12 @@ export default function TransactionForm({
 
                     {/* Credit Card Details */}
                     {type === 'expense' && paymentMethod === 'credit_card' && cards.length > 0 && (
-                        <div className="cc-form-details">
+                        <div className="cc-form-details" id="tx-cc-form-details">
                             <div className="form-row">
                                 <div className="form-group">
-                                    <label htmlFor="card-select">Kart Seçimi</label>
+                                    <label htmlFor="select-tx-card">Kart Seçimi</label>
                                     <select
-                                        id="card-select"
+                                        id="select-tx-card"
                                         value={selectedCardId}
                                         onChange={(e) => setSelectedCardId(e.target.value)}
                                         className="select-input"
@@ -334,6 +332,7 @@ export default function TransactionForm({
                                     <div className="form-group">
                                         <label>Taksit Durumu</label>
                                         <div
+                                            id="tx-installment-status-badge"
                                             className="select-input"
                                             style={{
                                                 display: 'flex',
@@ -349,9 +348,9 @@ export default function TransactionForm({
                                     </div>
                                 ) : (
                                     <div className="form-group">
-                                        <label htmlFor="installments-select">Taksit Sayısı</label>
+                                        <label htmlFor="select-tx-installments">Taksit Sayısı</label>
                                         <select
-                                            id="installments-select"
+                                            id="select-tx-installments"
                                             value={installments}
                                             onChange={(e) => setInstallments(e.target.value)}
                                             className="select-input"
@@ -368,42 +367,13 @@ export default function TransactionForm({
                                     </div>
                                 )}
                             </div>
-
-                            {/* CC Calculation Preview Box */}
-                            {selectedCard && calculatedDueDate && (
-                                <div className="cc-calc-preview">
-                                    <div className="cc-calc-header">
-                                        <Calendar size={14} />
-                                        <span>Ödeme & Nakit Akışı Bilgisi</span>
-                                    </div>
-                                    <div className="cc-calc-body">
-                                        <p>
-                                            <strong>Nakit Akışı (Hesap Kesim):</strong> {formatDate(calculatedCutoffDate)}
-                                            <span className="cc-calc-sub"> (Banka Son Ödeme: {formatDate(calculatedDueDate)})</span>
-                                        </p>
-                                        {isExistingInstallment ? (
-                                            <p style={{ marginTop: '4px' }}>
-                                                <strong>Taksit Tutarı:</strong> {formatCurrency(parsedAmount)} ({editingTransaction!.installment_no}/{editingTransaction!.total_installments} taksit)
-                                            </p>
-                                        ) : (
-                                            parsedInstallments > 1 && installmentAmounts.length > 0 && (
-                                                <p style={{ marginTop: '4px' }}>
-                                                    <strong>Taksit Tutarı:</strong> {parsedInstallments} x {formatCurrency(installmentAmounts[0])} / ay
-                                                </p>
-                                            )
-                                        )}
-                                        <p className="cc-calc-hint">
-                                            Bu harcama nakit akışı grafiğinize ve bakiyenize kart ekstrenizin <strong>hesap kesim tarihinde</strong> ödeneceği varsayımı ile dahil edilecektir.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     )}
 
                     <div className="form-group">
-                        <label className="checkbox-label">
+                        <label className="checkbox-label" id="label-tx-completed">
                             <input
+                                id="checkbox-tx-completed"
                                 type="checkbox"
                                 checked={isCompleted}
                                 onChange={(e) => setIsCompleted(e.target.checked)}
@@ -412,7 +382,7 @@ export default function TransactionForm({
                         </label>
                     </div>
 
-                    <button type="submit" className="btn-primary">
+                    <button type="submit" id="btn-submit-transaction" className="btn-primary">
                         {editingTransaction ? 'Güncelle' : 'Kaydet'}
                     </button>
                 </form>

@@ -29,7 +29,7 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
     if (active && payload && payload.length) {
         const value = payload[0].value;
         return (
-            <div className="chart-tooltip">
+            <div className="chart-tooltip" id="chart-cashflow-tooltip">
                 <p className="chart-tooltip-date">{label}</p>
                 <p className={`chart-tooltip-value ${value >= 0 ? 'positive' : 'negative'}`}>
                     {formatCurrency(value)}
@@ -43,12 +43,12 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
 export default function CashFlowChart({ data, periodLabel }: CashFlowChartProps) {
     if (data.length === 0) {
         return (
-            <div className="chart-container">
-                <div className="chart-header">
-                    <h2>Nakit Akışı</h2>
-                    <span className="chart-period">{periodLabel}</span>
+            <div className="chart-container" id="chart-cashflow-container">
+                <div className="chart-header" id="chart-cashflow-header">
+                    <h2 id="chart-cashflow-title">Nakit Akışı</h2>
+                    <span className="chart-period" id="chart-cashflow-period">{periodLabel}</span>
                 </div>
-                <div className="chart-empty">
+                <div className="chart-empty" id="chart-cashflow-empty">
                     <p>Henüz işlem yok. Grafik görmek için işlem ekleyin.</p>
                 </div>
             </div>
@@ -67,12 +67,12 @@ export default function CashFlowChart({ data, periodLabel }: CashFlowChartProps)
     const hasNegative = minBalance < 0;
 
     return (
-        <div className="chart-container">
-            <div className="chart-header">
-                <h2>Nakit Akışı</h2>
-                <span className="chart-period">{periodLabel}</span>
+        <div className="chart-container" id="chart-cashflow-container">
+            <div className="chart-header" id="chart-cashflow-header">
+                <h2 id="chart-cashflow-title">Nakit Akışı</h2>
+                <span className="chart-period" id="chart-cashflow-period">{periodLabel}</span>
             </div>
-            <div className="chart-wrapper">
+            <div className="chart-wrapper" id="chart-cashflow-canvas-wrap">
                 <ResponsiveContainer width="100%" height={350}>
                     <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                         <defs>

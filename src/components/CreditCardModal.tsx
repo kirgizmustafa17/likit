@@ -45,7 +45,6 @@ export default function CreditCardModal({
     const [lastFour, setLastFour] = useState('');
     const [creditLimit, setCreditLimit] = useState('');
     const [cutoffDay, setCutoffDay] = useState('15');
-    const [dueDay, setDueDay] = useState('25');
     const [color, setColor] = useState('indigo');
     const [saving, setSaving] = useState(false);
 
@@ -56,7 +55,6 @@ export default function CreditCardModal({
             setLastFour(editingCard.last_four_digits || '');
             setCreditLimit(editingCard.credit_limit ? String(editingCard.credit_limit) : '0');
             setCutoffDay(String(editingCard.cutoff_day || 15));
-            setDueDay(String(editingCard.due_day || 25));
             setColor(editingCard.color || 'indigo');
         } else {
             setName('');
@@ -64,7 +62,6 @@ export default function CreditCardModal({
             setLastFour('');
             setCreditLimit('50000');
             setCutoffDay('15');
-            setDueDay('25');
             setColor('indigo');
         }
     }, [editingCard, isOpen]);
@@ -89,13 +86,15 @@ export default function CreditCardModal({
 
         setSaving(true);
         try {
+            const cutoffNum = Math.min(31, Math.max(1, parseInt(cutoffDay, 10) || 1));
+            const autoDueDay = cutoffNum + 10 > 30 ? (cutoffNum + 10 - 30) : (cutoffNum + 10);
             const cardData = {
                 name,
                 bank_name: bankName || null,
                 last_four_digits: lastFour ? lastFour.slice(0, 4) : null,
                 credit_limit: parseFloat(creditLimit) || 0,
-                cutoff_day: Math.min(31, Math.max(1, parseInt(cutoffDay, 10) || 1)),
-                due_day: Math.min(31, Math.max(1, parseInt(dueDay, 10) || 1)),
+                cutoff_day: cutoffNum,
+                due_day: autoDueDay,
                 color,
                 is_active: true,
             };
@@ -116,20 +115,21 @@ export default function CreditCardModal({
     const activeColorObj = CARD_COLORS.find(c => c.id === color) || CARD_COLORS[0];
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay" id="modal-credit-card" onClick={onClose}>
+            <div className="modal-content" id="modal-credit-card-dialog" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <CardIcon size={20} className="logo-icon" />
-                        <h2>{editingCard ? 'Kredi Kartını Düzenle' : 'Yeni Kredi Kartı Ekle'}</h2>
+                        <h2 id="modal-credit-card-title">{editingCard ? 'Kredi Kartını Düzenle' : 'Yeni Kredi Kartı Ekle'}</h2>
                     </div>
-                    <button onClick={onClose} className="modal-close-btn" type="button">
+                    <button id="btn-close-cc-modal" onClick={onClose} className="modal-close-btn" type="button">
                         <X size={20} />
                     </button>
                 </div>
 
                 {/* Live Card Preview */}
                 <div
+                    id="vcc-preview"
                     className="card-preview"
                     style={{
                         background: activeColorObj.bg,
@@ -137,30 +137,30 @@ export default function CreditCardModal({
                     }}
                 >
                     <div className="card-preview-header">
-                        <span className="card-preview-bank">{bankName || 'Banka Adı'}</span>
+                        <span className="card-preview-bank" id="vcc-preview-bank">{bankName || 'Banka Adı'}</span>
                         <CardIcon size={22} className="card-preview-icon" />
                     </div>
                     <div className="card-preview-chip" />
-                    <div className="card-preview-number">
+                    <div className="card-preview-number" id="vcc-preview-number">
                         •••• •••• •••• {lastFour ? lastFour.padStart(4, '•').slice(-4) : '••••'}
                     </div>
                     <div className="card-preview-footer">
                         <div>
                             <span className="card-preview-label">Kart Adı</span>
-                            <div className="card-preview-val">{name || 'Kart İsmi'}</div>
+                            <div className="card-preview-val" id="vcc-preview-name">{name || 'Kart İsmi'}</div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                            <span className="card-preview-label">Kesim / Son Ödeme</span>
-                            <div className="card-preview-val">Her ayın {cutoffDay}&apos;i / {dueDay}&apos;si</div>
+                            <span className="card-preview-label">Hesap Kesim</span>
+                            <div className="card-preview-val" id="vcc-preview-cutoff">Ayın {cutoffDay}&apos;i (+10 gün vade)</div>
                         </div>
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="form" style={{ marginTop: '16px' }}>
+                <form onSubmit={handleSubmit} className="form" id="form-credit-card" style={{ marginTop: '16px' }}>
                     <div className="form-group">
-                        <label htmlFor="card-name">Kart İsmi / Tanımı</label>
+                        <label htmlFor="input-cc-name">Kart İsmi / Tanımı</label>
                         <input
-                            id="card-name"
+                            id="input-cc-name"
                             type="text"
                             placeholder="Örn: Bonus Platinum, Maximum Kartım"
                             value={name}
@@ -172,9 +172,9 @@ export default function CreditCardModal({
 
                     <div className="form-row">
                         <div className="form-group">
-                            <label htmlFor="card-bank">Banka</label>
+                            <label htmlFor="input-cc-bank">Banka</label>
                             <input
-                                id="card-bank"
+                                id="input-cc-bank"
                                 type="text"
                                 placeholder="Banka adı"
                                 list="bank-list"
@@ -189,9 +189,9 @@ export default function CreditCardModal({
                         </div>
 
                         <div className="form-group">
-                            <label htmlFor="card-last-four">Son 4 Hane</label>
+                            <label htmlFor="input-cc-last-four">Son 4 Hane</label>
                             <input
-                                id="card-last-four"
+                                id="input-cc-last-four"
                                 type="text"
                                 maxLength={4}
                                 placeholder="1234"
@@ -202,9 +202,9 @@ export default function CreditCardModal({
                     </div>
 
                     <div className="form-group">
-                        <label htmlFor="card-limit">Toplam Kart Limiti (₺)</label>
+                        <label htmlFor="input-cc-limit">Toplam Kart Limiti (₺)</label>
                         <input
-                            id="card-limit"
+                            id="input-cc-limit"
                             type="number"
                             min="0"
                             step="100"
@@ -216,10 +216,10 @@ export default function CreditCardModal({
                     </div>
 
                     <div className="form-row">
-                        <div className="form-group">
-                            <label htmlFor="cutoff-day">Hesap Kesim Günü</label>
+                        <div className="form-group" style={{ flex: 1 }}>
+                            <label htmlFor="select-cc-cutoff-day">Hesap Kesim Günü</label>
                             <select
-                                id="cutoff-day"
+                                id="select-cc-cutoff-day"
                                 value={cutoffDay}
                                 onChange={(e) => setCutoffDay(e.target.value)}
                                 className="select-input"
@@ -230,27 +230,22 @@ export default function CreditCardModal({
                             </select>
                         </div>
 
-                        <div className="form-group">
-                            <label htmlFor="due-day">Son Ödeme Günü</label>
-                            <select
-                                id="due-day"
-                                value={dueDay}
-                                onChange={(e) => setDueDay(e.target.value)}
-                                className="select-input"
-                            >
-                                {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                                    <option key={day} value={day}>Ayın {day}. günü</option>
-                                ))}
-                            </select>
+                        <div className="form-group" style={{ flex: 1 }}>
+                            <label>Son Ödeme Kuralı</label>
+                            <div className="auto-due-badge" id="badge-cc-auto-due">
+                                <span>Otomatik (+10 Gün)</span>
+                                <span className="auto-due-sub">Hafta sonuna gelirse ilk iş günü</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="form-group">
+                    <div className="form-group" id="cc-color-palette-group">
                         <label>Kart Rengi</label>
-                        <div className="color-palette-grid">
+                        <div className="color-palette-grid" id="cc-color-palette-grid">
                             {CARD_COLORS.map(c => (
                                 <button
                                     key={c.id}
+                                    id={`btn-cc-color-${c.id}`}
                                     type="button"
                                     onClick={() => setColor(c.id)}
                                     className={`color-swatch-btn ${color === c.id ? 'active' : ''}`}
@@ -263,7 +258,7 @@ export default function CreditCardModal({
                         </div>
                     </div>
 
-                    <button type="submit" className="btn-primary" disabled={saving}>
+                    <button type="submit" id="btn-submit-credit-card" className="btn-primary" disabled={saving}>
                         {saving ? 'Kaydediliyor...' : editingCard ? 'Kartı Güncelle' : 'Kartı Kaydet'}
                     </button>
                 </form>

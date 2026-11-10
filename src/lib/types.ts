@@ -19,6 +19,41 @@ export interface CreditCardSummary extends CreditCard {
     pending_transactions_count: number;
 }
 
+export type RecurringCategory =
+    | 'rent'
+    | 'salary'
+    | 'bill'
+    | 'dues'
+    | 'extra_income'
+    | 'subscription'
+    | 'other';
+
+export type RecurringFrequency = 'monthly' | 'weekly' | 'yearly';
+
+export interface RecurringRule {
+    id: string;
+    created_at: string;
+    title: string;
+    amount: number;
+    type: 'income' | 'expense';
+    category: RecurringCategory;
+    day_of_month: number;
+    frequency: RecurringFrequency;
+    payment_method: 'cash' | 'credit_card';
+    card_id?: string | null;
+    start_date: string;
+    end_date?: string | null;
+    is_active: boolean;
+    card?: CreditCard | null;
+}
+
+export interface RecurringSummary {
+    total_monthly_income: number;
+    total_monthly_expense: number;
+    net_monthly_flow: number;
+    active_rules_count: number;
+}
+
 export interface Transaction {
     id: string;
     created_at: string;
@@ -37,6 +72,9 @@ export interface Transaction {
     total_installments?: number | null;
     parent_transaction_id?: string | null;
     card?: CreditCard | null;
+    // Recurring fields
+    recurring_rule_id?: string | null;
+    category?: RecurringCategory | string | null;
 }
 
 export interface DailyBalance {

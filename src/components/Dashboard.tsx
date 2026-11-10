@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Plus, Droplets, TrendingUp, TrendingDown, Wallet, CreditCard as CardIcon, BarChart3 } from 'lucide-react';
-import { Transaction, CreditCard } from '@/lib/types';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Plus, Droplets, TrendingUp, TrendingDown, Wallet, CreditCard as CardIcon, BarChart3, Repeat } from 'lucide-react';
+import { Transaction, CreditCard, RecurringRule } from '@/lib/types';
 import {
     getTransactions,
     addTransaction,
@@ -15,6 +15,12 @@ import {
     updateCreditCard,
     deleteCreditCard,
     addCreditCardExpense,
+    getRecurringRules,
+    addRecurringRule,
+    updateRecurringRule,
+    deleteRecurringRule,
+    toggleRecurringRuleActive,
+    syncAllRecurringRules,
 } from '@/lib/actions';
 import { calculateDailyBalances, getPeriodRange, formatCurrency, getTodayStr } from '@/lib/utils';
 import { computeCardSummaries } from '@/lib/creditCardUtils';
@@ -25,14 +31,17 @@ import PeriodNavigator from './PeriodNavigator';
 import CompleteModal from './CompleteModal';
 import CreditCardsView from './CreditCardsView';
 import CreditCardModal from './CreditCardModal';
+import RecurringTransactionsView from './RecurringTransactionsView';
+import RecurringRuleModal from './RecurringRuleModal';
 
 export default function Dashboard() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [cards, setCards] = useState<CreditCard[]>([]);
+    const [recurringRules, setRecurringRules] = useState<RecurringRule[]>([]);
     const [loading, setLoading] = useState(true);
 
-    // Active View Tab: Cash Flow vs Credit Cards
-    const [activeTab, setActiveTab] = useState<'cashflow' | 'credit_cards'>('cashflow');
+    // Active View Tab: Cash Flow vs Credit Cards vs Recurring
+    const [activeTab, setActiveTab] = useState<'cashflow' | 'credit_cards' | 'recurring'>('cashflow');
 
     // Period / Chart state
     const [periodOffset, setPeriodOffset] = useState(0);
@@ -49,14 +58,35 @@ export default function Dashboard() {
     const [isCardModalOpen, setIsCardModalOpen] = useState(false);
     const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
 
+    const [isRecurringModalOpen, setIsRecurringModalOpen] = useState(false);
+    const [editingRule, setEditingRule] = useState<RecurringRule | null>(null);
+
+    const syncDoneRef = useRef(false);
+
     const loadData = useCallback(async () => {
         try {
-            const [txnsData, cardsData] = await Promise.all([
+            const [txnsData, cardsData, rulesData] = await Promise.all([
                 getTransactions(),
                 getCreditCards(),
+                getRecurringRules(),
             ]);
             setTransactions(txnsData);
             setCards(cardsData);
+            setRecurringRules(rulesData);
+
+            // One-time automatic background sync of recurring transactions if needed
+            if (!syncDoneRef.current && rulesData.length > 0) {
+                syncDoneRef.current = true;
+                const created = await syncAllRecurringRules({
+                    rules: rulesData,
+                    existingTransactions: txnsData,
+                    cards: cardsData,
+                });
+                if (created > 0) {
+                    const refreshedTxns = await getTransactions();
+                    setTransactions(refreshedTxns);
+                }
+            }
         } catch (error) {
             console.error('Data load error:', error);
         } finally {
@@ -138,7 +168,7 @@ export default function Dashboard() {
     // Card summaries
     const cardSummaries = computeCardSummaries(cards, transactions);
 
-    // Handlers
+    // Transaction Handlers
     const handleAddTransaction = async (data: {
         title: string;
         amount: number;
@@ -268,29 +298,87 @@ export default function Dashboard() {
         setIsFormOpen(true);
     };
 
+    // Recurring Rules Handlers
+    const handleAddRecurringRule = async (ruleData: Omit<RecurringRule, 'id' | 'created_at'>) => {
+        try {
+            await addRecurringRule(ruleData, cards);
+            await loadData();
+            setIsRecurringModalOpen(false);
+        } catch (error) {
+            console.error('Add recurring rule error:', error);
+        }
+    };
+
+    const handleUpdateRecurringRule = async (id: string, updates: Partial<RecurringRule>) => {
+        try {
+            await updateRecurringRule(id, updates);
+            await loadData();
+            setIsRecurringModalOpen(false);
+            setEditingRule(null);
+        } catch (error) {
+            console.error('Update recurring rule error:', error);
+        }
+    };
+
+    const handleDeleteRecurringRule = async (id: string, rule: RecurringRule) => {
+        const deleteFuture = confirm(
+            `"${rule.title}" düzenli işlem kuralını silmek üzeresiniz.\n\n• Gelecek planlanan tekrarları da SİLMEK için: "Tamam"\n• Yalnızca kuralı silip geçmiş ve mevcut işlemleri KORUMAK için: "İptal"`
+        );
+        try {
+            await deleteRecurringRule(id, deleteFuture);
+            await loadData();
+        } catch (error) {
+            console.error('Delete recurring rule error:', error);
+        }
+    };
+
+    const handleToggleRecurringActive = async (id: string, isActive: boolean) => {
+        try {
+            await toggleRecurringRuleActive(id, isActive);
+            if (isActive) {
+                await syncAllRecurringRules({ cards });
+            }
+            await loadData();
+        } catch (error) {
+            console.error('Toggle recurring active error:', error);
+        }
+    };
+
+    const handleSyncAllRecurring = async () => {
+        await syncAllRecurringRules({
+            rules: recurringRules,
+            existingTransactions: transactions,
+            cards,
+        });
+        await loadData();
+    };
+
     if (loading) {
         return (
-            <div className="loading-screen">
+            <div className="loading-screen" id="loading-screen">
                 <div className="loading-spinner" />
                 <p>Yükleniyor...</p>
             </div>
         );
     }
 
+    const activeRulesCount = recurringRules.filter(r => r.is_active).length;
+
     return (
-        <div className="dashboard">
+        <div className="dashboard" id="dashboard-main">
             {/* Header */}
-            <header className="header">
-                <div className="header-left">
+            <header className="header" id="header-main">
+                <div className="header-left" id="logo-likit">
                     <div className="logo">
                         <Droplets size={28} className="logo-icon" />
                         <h1>Likit</h1>
                     </div>
-                    <p className="header-subtitle">Nakit Akış & Finans Takibi</p>
+                    <p className="header-subtitle">Nakit Akış &amp; Finans Takibi</p>
                 </div>
 
-                <div className="header-nav-tabs">
+                <div className="header-nav-tabs" id="nav-tabs">
                     <button
+                        id="nav-tab-cashflow"
                         className={`tab-btn ${activeTab === 'cashflow' ? 'active' : ''}`}
                         onClick={() => setActiveTab('cashflow')}
                     >
@@ -298,18 +386,33 @@ export default function Dashboard() {
                         <span>Nakit Akışı</span>
                     </button>
                     <button
+                        id="nav-tab-credit-cards"
                         className={`tab-btn ${activeTab === 'credit_cards' ? 'active' : ''}`}
                         onClick={() => setActiveTab('credit_cards')}
                     >
                         <CardIcon size={16} />
                         <span>Kredi Kartları</span>
-                        {cards.length > 0 && <span className="tab-badge">{cards.length}</span>}
+                        {cards.length > 0 && <span className="tab-badge" id="badge-cards-count">{cards.length}</span>}
+                    </button>
+                    <button
+                        id="nav-tab-recurring"
+                        className={`tab-btn ${activeTab === 'recurring' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('recurring')}
+                    >
+                        <Repeat size={16} />
+                        <span>Düzenli İşlemler</span>
+                        {activeRulesCount > 0 && (
+                            <span className="tab-badge" id="badge-recurring-count">
+                                {activeRulesCount}
+                            </span>
+                        )}
                     </button>
                 </div>
 
-                <div className="header-actions">
-                    {activeTab === 'cashflow' ? (
+                <div className="header-actions" id="header-actions">
+                    {activeTab === 'cashflow' && (
                         <button
+                            id="btn-header-add-transaction"
                             onClick={() => {
                                 setEditingTransaction(null);
                                 setDefaultCardId(undefined);
@@ -320,8 +423,10 @@ export default function Dashboard() {
                             <Plus size={20} />
                             <span>Yeni İşlem</span>
                         </button>
-                    ) : (
+                    )}
+                    {activeTab === 'credit_cards' && (
                         <button
+                            id="btn-header-add-card"
                             onClick={() => {
                                 setEditingCard(null);
                                 setIsCardModalOpen(true);
@@ -332,41 +437,61 @@ export default function Dashboard() {
                             <span>Yeni Kart</span>
                         </button>
                     )}
+                    {activeTab === 'recurring' && (
+                        <button
+                            id="btn-header-add-recurring"
+                            onClick={() => {
+                                setEditingRule(null);
+                                setIsRecurringModalOpen(true);
+                            }}
+                            className="btn-add"
+                        >
+                            <Plus size={20} />
+                            <span>Yeni Düzenli İşlem</span>
+                        </button>
+                    )}
                 </div>
             </header>
 
             {/* View Switch */}
-            {activeTab === 'cashflow' ? (
+            {activeTab === 'cashflow' && (
                 <>
                     {/* Cash Flow Stats Cards */}
-                    <div className="stats-grid">
-                        <div className="stat-card stat-balance">
+                    <div className="stats-grid" id="stats-overview-grid">
+                        <div className="stat-card stat-balance" id="stat-today-balance">
                             <div className="stat-icon-wrap">
                                 <Wallet size={20} />
                             </div>
                             <div className="stat-info">
                                 <span className="stat-label">Bugünkü Bakiye</span>
-                                <span className={`stat-value ${todayBalance >= 0 ? 'positive' : 'negative'}`}>
+                                <span
+                                    id="stat-today-balance-value"
+                                    className={`stat-value ${todayBalance >= 0 ? 'positive' : 'negative'}`}
+                                >
                                     {formatCurrency(todayBalance)}
                                 </span>
                             </div>
                         </div>
-                        <div className="stat-card stat-income">
+                        <div className="stat-card stat-income" id="stat-total-income">
                             <div className="stat-icon-wrap">
                                 <TrendingUp size={20} />
                             </div>
                             <div className="stat-info">
                                 <span className="stat-label">Toplam Gelir</span>
-                                <span className="stat-value positive">{formatCurrency(totalIncome)}</span>
+                                <span id="stat-total-income-value" className="stat-value positive">
+                                    {formatCurrency(totalIncome)}
+                                </span>
                             </div>
                         </div>
-                        <div className="stat-card stat-expense">
+                        <div className="stat-card stat-expense" id="stat-total-expense">
                             <div className="stat-icon-wrap">
                                 <TrendingDown size={20} />
                             </div>
                             <div className="stat-info">
                                 <span className="stat-label">Toplam Gider</span>
-                                <span className="stat-value negative">{formatCurrency(totalExpense)}</span>
+                                <span id="stat-total-expense-value" className="stat-value negative">
+                                    {formatCurrency(totalExpense)}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -384,7 +509,7 @@ export default function Dashboard() {
                     {/* Chart */}
                     <CashFlowChart data={chartData} periodLabel={displayLabel} />
 
-                    {/* Transaction List with Credit Cards support */}
+                    {/* Transaction List with Credit Cards and Recurring support */}
                     <TransactionList
                         transactions={(() => {
                             const planned = transactions.filter(t => !t.is_completed);
@@ -403,7 +528,9 @@ export default function Dashboard() {
                         onMarkComplete={openCompleteModal}
                     />
                 </>
-            ) : (
+            )}
+
+            {activeTab === 'credit_cards' && (
                 /* Credit Cards View */
                 <CreditCardsView
                     cards={cardSummaries}
@@ -421,6 +548,25 @@ export default function Dashboard() {
                     onMarkComplete={openCompleteModal}
                     onEditTransaction={openEditForm}
                     onDeleteTransaction={handleDeleteTransaction}
+                />
+            )}
+
+            {activeTab === 'recurring' && (
+                /* Recurring Transactions View */
+                <RecurringTransactionsView
+                    rules={recurringRules}
+                    cards={cards}
+                    onAddRule={() => {
+                        setEditingRule(null);
+                        setIsRecurringModalOpen(true);
+                    }}
+                    onEditRule={(rule) => {
+                        setEditingRule(rule);
+                        setIsRecurringModalOpen(true);
+                    }}
+                    onDeleteRule={handleDeleteRecurringRule}
+                    onToggleActive={handleToggleRecurringActive}
+                    onSyncAll={handleSyncAllRecurring}
                 />
             )}
 
@@ -458,6 +604,18 @@ export default function Dashboard() {
                 onSubmit={handleAddCard}
                 editingCard={editingCard}
                 onUpdate={handleUpdateCard}
+            />
+
+            <RecurringRuleModal
+                isOpen={isRecurringModalOpen}
+                onClose={() => {
+                    setIsRecurringModalOpen(false);
+                    setEditingRule(null);
+                }}
+                onSubmit={handleAddRecurringRule}
+                editingRule={editingRule}
+                onUpdate={handleUpdateRecurringRule}
+                cards={cards}
             />
         </div>
     );

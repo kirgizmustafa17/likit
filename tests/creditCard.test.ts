@@ -50,30 +50,39 @@ test('calculateCardCutoffAndDueDate: purchase on exact cutoff day', () => {
     });
 });
 
-test('calculateCardCutoffAndDueDate: due_day <= cutoff_day (due in next month)', () => {
+test('calculateCardCutoffAndDueDate: user case 11 November -> 23 November (Saturday shifted to Monday)', () => {
+    const card = { cutoff_day: 11, due_day: 25 };
+    const result = calculateCardCutoffAndDueDate(card, '2026-11-05');
+    assert.deepStrictEqual(result, {
+        cutoffDate: '2026-11-11',
+        dueDate: '2026-11-23', // 11 Nov + 10 days = 21 Nov (Saturday) -> shifted to 23 Nov (Monday)
+    });
+});
+
+test('calculateCardCutoffAndDueDate: due date automatically calculated (+10 days & weekday adjustment)', () => {
     const card = { cutoff_day: 25, due_day: 5 };
-    // Purchase before cutoff
+    // Purchase before cutoff: Cutoff 25 May -> 25 May + 10 days = 4 June (Thursday)
     const res1 = calculateCardCutoffAndDueDate(card, '2026-05-10');
     assert.deepStrictEqual(res1, {
         cutoffDate: '2026-05-25',
-        dueDate: '2026-06-05',
+        dueDate: '2026-06-04',
     });
 
-    // Purchase after cutoff
+    // Purchase after cutoff: Cutoff 25 June -> 25 June + 10 days = 5 July (Sunday) -> shifted to 6 July (Monday)
     const res2 = calculateCardCutoffAndDueDate(card, '2026-05-26');
     assert.deepStrictEqual(res2, {
         cutoffDate: '2026-06-25',
-        dueDate: '2026-07-05',
+        dueDate: '2026-07-06',
     });
 });
 
 test('calculateCardCutoffAndDueDate: year boundary rollover (December to January)', () => {
     const card = { cutoff_day: 20, due_day: 30 };
-    // Purchase after cutoff in December
+    // Purchase after cutoff in December: Cutoff 20 Jan 2027 -> 20 Jan + 10 days = 30 Jan (Saturday) -> shifted to 1 Feb (Monday)
     const result = calculateCardCutoffAndDueDate(card, '2026-12-25');
     assert.deepStrictEqual(result, {
         cutoffDate: '2027-01-20',
-        dueDate: '2027-01-30',
+        dueDate: '2027-02-01',
     });
 });
 
@@ -121,25 +130,25 @@ test('distributeInstallmentAmounts: 100 TL in 6 installments preserves cents', (
     assert.strictEqual(Number(sum.toFixed(2)), 100);
 });
 
-test('calculateInstallmentDueDates: generates monthly sequential due dates', () => {
+test('calculateInstallmentDueDates: generates monthly sequential due dates with weekday adjustment', () => {
     const card = { cutoff_day: 20, due_day: 30 };
     const dates = calculateInstallmentDueDates(card, '2026-05-10', 4);
     assert.deepStrictEqual(dates, [
-        '2026-05-30',
-        '2026-06-30',
-        '2026-07-30',
-        '2026-08-30',
+        '2026-06-01', // May 20 + 10 = May 30 (Sat) -> June 1 (Mon)
+        '2026-06-30', // June 20 + 10 = June 30 (Tue)
+        '2026-07-30', // July 20 + 10 = July 30 (Thu)
+        '2026-08-31', // Aug 20 + 10 = Aug 30 (Sun) -> Aug 31 (Mon)
     ]);
 });
 
-test('calculateInstallmentDueDates: handles 31st due day across short months', () => {
-    const card = { cutoff_day: 20, due_day: 31 };
+test('calculateInstallmentDueDates: handles 31st cutoff day across short months', () => {
+    const card = { cutoff_day: 31, due_day: 31 };
     const dates = calculateInstallmentDueDates(card, '2026-01-10', 4);
     assert.deepStrictEqual(dates, [
-        '2026-01-31',
-        '2026-02-28', // Feb clamped
-        '2026-03-31',
-        '2026-04-30', // Apr clamped
+        '2026-02-10', // Jan 31 + 10 = Feb 10 (Tue)
+        '2026-03-10', // Feb 28 + 10 = Mar 10 (Tue)
+        '2026-04-10', // Mar 31 + 10 = Apr 10 (Fri)
+        '2026-05-11', // Apr 30 + 10 = May 10 (Sun) -> May 11 (Mon)
     ]);
 });
 
@@ -168,7 +177,7 @@ test('generateCreditCardInstallments creates correct transaction objects', () =>
     assert.strictEqual(installments[0].title, 'Buzdolabı (1/3)');
     assert.strictEqual(installments[0].amount, 5000);
     assert.strictEqual(installments[0].transaction_date, '2026-05-15'); // Cash flow hits on cutoff date
-    assert.strictEqual(installments[0].due_date, '2026-05-25');         // Official bank due date
+    assert.strictEqual(installments[0].due_date, '2026-05-25');         // Official bank due date (May 25 Mon)
     assert.strictEqual(installments[0].purchase_date, '2026-05-10');
     assert.strictEqual(installments[0].card_id, 'card-123');
     assert.strictEqual(installments[0].installment_no, 1);
@@ -177,11 +186,11 @@ test('generateCreditCardInstallments creates correct transaction objects', () =>
 
     assert.strictEqual(installments[1].title, 'Buzdolabı (2/3)');
     assert.strictEqual(installments[1].transaction_date, '2026-06-15');
-    assert.strictEqual(installments[1].due_date, '2026-06-25');
+    assert.strictEqual(installments[1].due_date, '2026-06-25');         // June 25 Thu
 
     assert.strictEqual(installments[2].title, 'Buzdolabı (3/3)');
     assert.strictEqual(installments[2].transaction_date, '2026-07-15');
-    assert.strictEqual(installments[2].due_date, '2026-07-25');
+    assert.strictEqual(installments[2].due_date, '2026-07-27');         // July 15 + 10 = July 25 (Sat) -> July 27 (Mon)
 });
 
 test('computeCardSummaries aggregates debt and available limit correctly', () => {
@@ -241,7 +250,7 @@ test('computeCardSummaries aggregates debt and available limit correctly', () =>
     assert.strictEqual(summary.available_limit, 27000);
     assert.strictEqual(summary.pending_transactions_count, 1);
     assert.strictEqual(summary.next_cutoff_date, '2026-05-20');
-    assert.strictEqual(summary.next_due_date, '2026-05-30');
+    assert.strictEqual(summary.next_due_date, '2026-06-01'); // May 20 + 10 = May 30 (Sat) -> June 1 (Mon)
 });
 
 test('computeCardSummaries: handles debt exceeding limit by clamping available_limit to 0', () => {
@@ -387,14 +396,14 @@ test('calculateNextCardCycle: correctly tracks upcoming due date when cutoff has
     assert.strictEqual(cycle3.nextDueDate, '2026-06-25');
 });
 
-test('calculateNextCardCycle: handles due_day <= cutoff_day across month cycle', () => {
-    // Cutoff on 25th, payment due on 5th of next month
+test('calculateNextCardCycle: handles cutoff passed and checks upcoming due date', () => {
+    // Cutoff on 25th -> 25 May + 10 days = 4 June (Thursday)
     const card = { cutoff_day: 25, due_day: 5 };
 
-    // Today is May 28: May 25 cutoff passed, upcoming bill is due on June 5
+    // Today is May 28: May 25 cutoff passed, upcoming bill is due on June 4
     const cycle = calculateNextCardCycle(card, '2026-05-28');
     assert.strictEqual(cycle.nextCutoffDate, '2026-06-25');
-    assert.strictEqual(cycle.nextDueDate, '2026-06-05');
+    assert.strictEqual(cycle.nextDueDate, '2026-06-04');
 });
 
 test('generateUUID: produces valid RFC 4122 v4 UUID strings', () => {
@@ -455,9 +464,9 @@ test('calculateInstallmentDueDates: correctly isolates index k-1 for installment
 
     const allDates = calculateInstallmentDueDates(card, purchaseDate, totalInstallments);
     assert.strictEqual(allDates.length, 3);
-    assert.strictEqual(allDates[0], '2026-05-25'); // Installment 1
-    assert.strictEqual(allDates[1], '2026-06-25'); // Installment 2
-    assert.strictEqual(allDates[2], '2026-07-25'); // Installment 3
+    assert.strictEqual(allDates[0], '2026-05-25'); // May 15 + 10 = May 25 (Mon)
+    assert.strictEqual(allDates[1], '2026-06-25'); // June 15 + 10 = June 25 (Thu)
+    assert.strictEqual(allDates[2], '2026-07-27'); // July 15 + 10 = July 25 (Sat) -> July 27 (Mon)
 
     // Editing installment 2 should use index 1 -> '2026-06-25', never falling back to installment 1
     const installment2No = 2;
@@ -473,7 +482,7 @@ test('calculateInstallmentDueDates: 12 installments starting in December after c
     assert.strictEqual(dates[0], '2027-01-25');
     assert.strictEqual(dates[1], '2027-02-25');
     assert.strictEqual(dates[2], '2027-03-25');
-    assert.strictEqual(dates[11], '2027-12-25');
+    assert.strictEqual(dates[11], '2027-12-27'); // Dec 25, 2027 is Saturday -> Dec 27 (Mon)
 });
 
 test('calculateInstallmentDueDates: 12 installments starting in December before cutoff', () => {

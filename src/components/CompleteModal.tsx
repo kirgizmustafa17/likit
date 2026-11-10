@@ -54,27 +54,27 @@ export default function CompleteModal({
     };
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content modal-sm" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay" id="modal-complete" onClick={onClose}>
+            <div className="modal-content modal-sm" id="modal-complete-dialog" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>İşlemi Tamamla</h2>
-                    <button onClick={onClose} className="modal-close-btn">
+                    <h2 id="modal-complete-title">İşlemi Tamamla</h2>
+                    <button id="btn-close-complete-modal" onClick={onClose} className="modal-close-btn" type="button">
                         <X size={20} />
                     </button>
                 </div>
 
-                <div className="complete-info">
-                    <p className="complete-title">{transaction.title}</p>
-                    <p className="complete-planned">
+                <div className="complete-info" id="complete-info">
+                    <p className="complete-title" id="complete-info-title">{transaction.title}</p>
+                    <p className="complete-planned" id="complete-info-planned">
                         Planlanan: {formatCurrency(transaction.amount)} – {formatDate(transaction.transaction_date)}
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="form">
+                <form onSubmit={handleSubmit} className="form" id="form-complete">
                     <div className="form-group">
-                        <label htmlFor="completed-date">Gerçekleşme Tarihi</label>
+                        <label htmlFor="input-complete-date">Gerçekleşme Tarihi</label>
                         <input
-                            id="completed-date"
+                            id="input-complete-date"
                             type="date"
                             value={completedDate}
                             onChange={(e) => setCompletedDate(e.target.value)}
@@ -83,9 +83,9 @@ export default function CompleteModal({
                     </div>
 
                     <div className="form-group">
-                        <label htmlFor="completed-amount">Gerçekleşen Tutar (₺)</label>
+                        <label htmlFor="input-complete-amount">Gerçekleşen Tutar (₺)</label>
                         <input
-                            id="completed-amount"
+                            id="input-complete-amount"
                             type="number"
                             value={completedAmount}
                             onChange={(e) => setCompletedAmount(e.target.value)}
@@ -95,7 +95,7 @@ export default function CompleteModal({
                         <span className="form-hint">Varsayılan: planlanan tutar</span>
                     </div>
 
-                    <button type="submit" className="btn-success">
+                    <button type="submit" id="btn-submit-complete" className="btn-success">
                         <Check size={18} />
                         Tamamlandı Olarak İşaretle
                     </button>

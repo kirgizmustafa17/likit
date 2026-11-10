@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Edit3, Trash2, CheckCircle2, Clock, ArrowUpCircle, ArrowDownCircle, ChevronDown, ChevronRight, CreditCard as CardIcon } from 'lucide-react';
 import { Transaction, CreditCard } from '@/lib/types';
 import { formatCurrency, formatDate, cn } from '@/lib/utils';
+import { getCategoryLabel, getCategoryIcon } from '@/lib/recurringUtils';
 
 interface TransactionListProps {
     transactions: Transaction[];
@@ -32,11 +33,11 @@ export default function TransactionList({
 
     if (transactions.length === 0) {
         return (
-            <div className="transaction-list">
-                <div className="transaction-list-header">
-                    <h2>İşlemler</h2>
+            <div className="transaction-list" id="tx-list-container">
+                <div className="transaction-list-header" id="tx-list-header">
+                    <h2 id="tx-list-title">İşlemler</h2>
                 </div>
-                <div className="transaction-empty">
+                <div className="transaction-empty" id="tx-list-empty">
                     <p>Bu dönemde işlem bulunmuyor.</p>
                 </div>
             </div>
@@ -48,23 +49,25 @@ export default function TransactionList({
     const completed = filteredTransactions.filter(t => t.is_completed);
 
     return (
-        <div className="transaction-list">
-            <div className="transaction-list-header">
-                <div>
-                    <h2>İşlemler</h2>
-                    <span className="transaction-count">{filteredTransactions.length} işlem</span>
+        <div className="transaction-list" id="tx-list-container">
+            <div className="transaction-list-header" id="tx-list-header">
+                <div className="transaction-list-title-wrap" id="tx-list-title-wrap">
+                    <h2 id="tx-list-title">İşlemler</h2>
+                    <span className="transaction-count" id="tx-list-count">{filteredTransactions.length} işlem</span>
                 </div>
 
                 {/* Filter Selector */}
                 {cards.length > 0 && (
-                    <div className="cc-filter-tabs">
+                    <div className="cc-filter-tabs" id="tx-filter-bar">
                         <button
+                            id="btn-filter-all"
                             className={`cc-filter-tab ${filterMethod === 'all' ? 'active' : ''}`}
                             onClick={() => setFilterMethod('all')}
                         >
                             Tümü
                         </button>
                         <button
+                            id="btn-filter-cash"
                             className={`cc-filter-tab ${filterMethod === 'cash' ? 'active' : ''}`}
                             onClick={() => setFilterMethod('cash')}
                         >
@@ -73,6 +76,7 @@ export default function TransactionList({
                         {cards.map(c => (
                             <button
                                 key={c.id}
+                                id={`btn-filter-card-${c.id}`}
                                 className={`cc-filter-tab ${filterMethod === c.id ? 'active' : ''}`}
                                 onClick={() => setFilterMethod(c.id)}
                             >
@@ -85,50 +89,57 @@ export default function TransactionList({
             </div>
 
             {filteredTransactions.length === 0 ? (
-                <div className="transaction-empty">
+                <div className="transaction-empty" id="tx-empty-filtered">
                     <p>Seçilen filtreye uygun işlem bulunmuyor.</p>
                 </div>
             ) : (
                 <>
                     {planned.length > 0 && (
-                        <div className="transaction-section">
-                            <h3 className="transaction-section-title">
+                        <div className="transaction-section" id="tx-section-planned">
+                            <h3 className="transaction-section-title" id="tx-title-planned">
                                 <Clock size={14} />
                                 Planlanan ({planned.length})
                             </h3>
-                            {planned.map((t) => (
-                                <TransactionItem
-                                    key={t.id}
-                                    transaction={t}
-                                    cards={cards}
-                                    onEdit={onEdit}
-                                    onDelete={onDelete}
-                                    onMarkComplete={onMarkComplete}
-                                />
-                            ))}
+                            <div id="tx-items-planned">
+                                {planned.map((t) => (
+                                    <TransactionItem
+                                        key={t.id}
+                                        transaction={t}
+                                        cards={cards}
+                                        onEdit={onEdit}
+                                        onDelete={onDelete}
+                                        onMarkComplete={onMarkComplete}
+                                    />
+                                ))}
+                            </div>
                         </div>
                     )}
 
                     {completed.length > 0 && (
-                        <div className="transaction-section">
+                        <div className="transaction-section" id="tx-section-completed">
                             <h3
+                                id="btn-toggle-completed"
                                 className="transaction-section-title completed-title clickable"
                                 onClick={() => setShowCompleted(!showCompleted)}
                             >
                                 {showCompleted ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                 <CheckCircle2 size={14} />
-                                Tamamlanan ({completed.length})
+                                <span id="tx-title-completed">Tamamlanan ({completed.length})</span>
                             </h3>
-                            {showCompleted && completed.map((t) => (
-                                <TransactionItem
-                                    key={t.id}
-                                    transaction={t}
-                                    cards={cards}
-                                    onEdit={onEdit}
-                                    onDelete={onDelete}
-                                    onMarkComplete={onMarkComplete}
-                                />
-                            ))}
+                            {showCompleted && (
+                                <div id="tx-items-completed">
+                                    {completed.map((t) => (
+                                        <TransactionItem
+                                            key={t.id}
+                                            transaction={t}
+                                            cards={cards}
+                                            onEdit={onEdit}
+                                            onDelete={onDelete}
+                                            onMarkComplete={onMarkComplete}
+                                        />
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
                 </>
@@ -157,26 +168,31 @@ function TransactionItem({
     const card = t.card || (t.card_id ? cards.find(c => c.id === t.card_id) : null);
 
     return (
-        <div className={cn('transaction-item', t.is_completed && 'transaction-item-completed')}>
+        <div id={`tx-item-${t.id}`} className={cn('transaction-item', t.is_completed && 'transaction-item-completed')}>
             <div className="transaction-item-left">
                 <div className={cn('transaction-icon', isIncome ? 'income-icon' : 'expense-icon')}>
                     {isIncome ? <ArrowUpCircle size={18} /> : card ? <CardIcon size={18} /> : <ArrowDownCircle size={18} />}
                 </div>
                 <div className="transaction-info">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        <span className="transaction-title">{t.title}</span>
+                        <span className="transaction-title" id={`tx-title-${t.id}`}>{t.title}</span>
+                        {t.recurring_rule_id && (
+                            <span className="recurring-tag-badge" id={`tx-recurring-badge-${t.id}`}>
+                                {getCategoryIcon(t.category)} {getCategoryLabel(t.category)}
+                            </span>
+                        )}
                         {card && (
-                            <span className="cc-tag-badge">
+                            <span className="cc-tag-badge" id={`tx-badge-card-${t.id}`}>
                                 💳 {card.name}
                             </span>
                         )}
                         {t.total_installments && t.total_installments > 1 && (
-                            <span className="cc-installment-badge">
+                            <span className="cc-installment-badge" id={`tx-badge-installment-${t.id}`}>
                                 {t.installment_no}/{t.total_installments} Taksit
                             </span>
                         )}
                     </div>
-                    <span className="transaction-date">
+                    <span className="transaction-date" id={`tx-date-${t.id}`}>
                         {card ? (
                             <>
                                 <span>Kesim: {formatDate(effectiveDate)}</span>
@@ -203,7 +219,7 @@ function TransactionItem({
                 </div>
             </div>
             <div className="transaction-item-right">
-                <span className={cn('transaction-amount', isIncome ? 'amount-income' : 'amount-expense')}>
+                <span id={`tx-amount-${t.id}`} className={cn('transaction-amount', isIncome ? 'amount-income' : 'amount-expense')}>
                     {isIncome ? '+' : '-'}{formatCurrency(effectiveAmount)}
                 </span>
                 {t.is_completed && t.completed_amount != null && t.completed_amount !== t.amount && (
@@ -214,6 +230,7 @@ function TransactionItem({
                 <div className="transaction-actions">
                     {!t.is_completed && (
                         <button
+                            id={`btn-complete-tx-${t.id}`}
                             onClick={() => onMarkComplete(t)}
                             className="action-btn action-complete"
                             title="Tamamlandı olarak işaretle"
@@ -222,6 +239,7 @@ function TransactionItem({
                         </button>
                     )}
                     <button
+                        id={`btn-edit-tx-${t.id}`}
                         onClick={() => onEdit(t)}
                         className="action-btn action-edit"
                         title="Düzenle"
@@ -229,6 +247,7 @@ function TransactionItem({
                         <Edit3 size={15} />
                     </button>
                     <button
+                        id={`btn-delete-tx-${t.id}`}
                         onClick={() => onDelete(t.id, t)}
                         className="action-btn action-delete"
                         title="Sil"
