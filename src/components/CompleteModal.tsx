@@ -24,6 +24,7 @@ export default function CompleteModal({
     // Reset state and default to today when modal opens
     useEffect(() => {
         if (isOpen && transaction) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setCompletedDate(getTodayStr());
             setCompletedAmount(String(transaction.amount));
         }

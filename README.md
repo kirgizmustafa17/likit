@@ -33,19 +33,26 @@ Veritabanı migration ve SQL dosyaları standart `supabase/` dizini altında top
 ```text
 supabase/
 ├── migrations/
-│   └── 20260205000000_create_likit_transactions.sql  # Ana şema, indeksler ve RLS
+│   ├── 20260205000000_create_likit_transactions.sql  # Ana şema, indeksler ve RLS
+│   └── 20260205000001_create_likit_credit_cards.sql  # Kredi kartı desteği ve taksit alanları
 └── reset-data.sql                                    # Test/geçmiş kayıtları sıfırlama (TRUNCATE)
 ```
 
 ### Şema Kurulumu
 1. **Supabase SQL Editor Üzerinden:**
-   - `supabase/migrations/20260205000000_create_likit_transactions.sql` dosyasının içeriğini kopyalayıp Supabase panelinizdeki SQL Editor alanına yapıştırın ve **Run** butonuna basın.
-   - Script *idempotent* (tekrarlanabilir) yapıdadır; birden fazla çalıştırılsa bile hata vermez.
+   - Proje kökündeki `supabase-schema.sql` dosyasını (tüm şema tek dosyada) veya sırasıyla `supabase/migrations/` dosyalarını Supabase SQL Editor'de çalıştırın.
+   - Scriptler *idempotent* (tekrarlanabilir) yapıdadır; birden fazla çalıştırılsa bile hata vermez.
 
 2. **Supabase CLI ile (Opsiyonel):**
    ```bash
    npx supabase db push
    ```
+
+### 💳 Kredi Kartı Desteği
+- **Kart Yönetimi:** Çoklu kredi kartı ekleme, limit, hesap kesim ve son ödeme günleri tanımlama.
+- **Taksitli Harcamalar:** Tek çekim veya 2-12 taksit seçenekleriyle harcamaların hesap kesim ve son ödeme günlerine göre otomatik taksitlendirilmesi.
+- **Nakit Akışı Entegrasyonu:** Kredi kartı harcamaları kart ekstresinin son ödeme tarihinde nakit akışına ve grafiğe yansıtılarak doğru bakiye projeksiyonu sağlanır.
+- **Kart Durumu:** Kart bazlı güncel borç, kullanılabilir limit ve sonraki hesap kesim/son ödeme tarihleri gösterimi.
 
 ### Veritabanını Sıfırlama (Verileri Temizleme)
 Test veya geçmiş işlem verilerini sıfırlamak için `supabase/reset-data.sql` scriptini SQL Editor'de çalıştırabilirsiniz:

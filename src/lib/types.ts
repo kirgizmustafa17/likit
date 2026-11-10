@@ -1,3 +1,24 @@
+export interface CreditCard {
+    id: string;
+    created_at: string;
+    name: string;
+    bank_name?: string | null;
+    last_four_digits?: string | null;
+    color: string;
+    credit_limit: number;
+    cutoff_day: number;
+    due_day: number;
+    is_active: boolean;
+}
+
+export interface CreditCardSummary extends CreditCard {
+    current_debt: number;
+    available_limit: number;
+    next_cutoff_date: string;
+    next_due_date: string;
+    pending_transactions_count: number;
+}
+
 export interface Transaction {
     id: string;
     created_at: string;
@@ -8,6 +29,13 @@ export interface Transaction {
     type: 'income' | 'expense';
     completed_date?: string | null;
     completed_amount?: number | null;
+    // Credit card fields
+    card_id?: string | null;
+    purchase_date?: string | null;
+    installment_no?: number | null;
+    total_installments?: number | null;
+    parent_transaction_id?: string | null;
+    card?: CreditCard | null;
 }
 
 export interface DailyBalance {

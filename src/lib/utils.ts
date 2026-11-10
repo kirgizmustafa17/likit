@@ -1,4 +1,4 @@
-import { format, addDays, startOfDay, isAfter, isBefore, isEqual, parseISO, subMonths, addMonths, setDate, differenceInDays } from 'date-fns';
+import { format, addDays, startOfDay, isBefore, parseISO, subMonths, addMonths, setDate, differenceInDays } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import { Transaction, DailyBalance } from './types';
 

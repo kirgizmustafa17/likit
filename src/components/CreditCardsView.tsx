@@ -1,0 +1,381 @@
+'use client';
+
+import { useState } from 'react';
+import { Plus, CreditCard as CardIcon, Edit3, Trash2, Calendar, AlertCircle, ShoppingBag, CheckCircle2 } from 'lucide-react';
+import { CreditCard, CreditCardSummary, Transaction } from '@/lib/types';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import { CARD_COLORS } from './CreditCardModal';
+
+interface CreditCardsViewProps {
+    cards: CreditCardSummary[];
+    transactions: Transaction[];
+    onAddCard: () => void;
+    onEditCard: (card: CreditCard) => void;
+    onDeleteCard: (id: string) => void;
+    onAddExpense: (cardId?: string) => void;
+    onMarkComplete: (transaction: Transaction) => void;
+    onEditTransaction: (transaction: Transaction) => void;
+    onDeleteTransaction: (id: string, transaction?: Transaction) => void;
+}
+
+export default function CreditCardsView({
+    cards,
+    transactions,
+    onAddCard,
+    onEditCard,
+    onDeleteCard,
+    onAddExpense,
+    onMarkComplete,
+    onEditTransaction,
+    onDeleteTransaction,
+}: CreditCardsViewProps) {
+    const [selectedCardId, setSelectedCardId] = useState<string | 'all'>('all');
+
+    // If previously selected card was deleted, safely fallback to 'all'
+    const activeSelectedId = selectedCardId === 'all' || cards.some(c => c.id === selectedCardId)
+        ? selectedCardId
+        : 'all';
+
+    // Aggregate statistics across all cards
+    const totalLimit = cards.reduce((sum, c) => sum + c.credit_limit, 0);
+    const totalDebt = cards.reduce((sum, c) => sum + c.current_debt, 0);
+    const totalAvailable = Math.max(0, totalLimit - totalDebt);
+
+    // Filter card transactions
+    const cardTransactions = transactions.filter(t => {
+        if (activeSelectedId === 'all') {
+            return Boolean(t.card_id);
+        }
+        return t.card_id === activeSelectedId;
+    });
+
+    const pendingCardTxns = cardTransactions.filter(t => !t.is_completed);
+    const completedCardTxns = cardTransactions.filter(t => t.is_completed);
+
+    return (
+        <div className="credit-cards-view">
+            {/* Top Stats */}
+            <div className="stats-grid">
+                <div className="stat-card stat-balance">
+                    <div className="stat-icon-wrap">
+                        <CardIcon size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <span className="stat-label">Toplam Kart Limiti</span>
+                        <span className="stat-value">{formatCurrency(totalLimit)}</span>
+                    </div>
+                </div>
+
+                <div className="stat-card stat-expense">
+                    <div className="stat-icon-wrap">
+                        <AlertCircle size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <span className="stat-label">Güncel Kart Borçları</span>
+                        <span className="stat-value negative">{formatCurrency(totalDebt)}</span>
+                    </div>
+                </div>
+
+                <div className="stat-card stat-income">
+                    <div className="stat-icon-wrap">
+                        <CheckCircle2 size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <span className="stat-label">Kullanılabilir Toplam Limit</span>
+                        <span className="stat-value positive">{formatCurrency(totalAvailable)}</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="cc-actions-bar">
+                <div className="cc-actions-left">
+                    <h2>Kayıtlı Kartlar ({cards.length})</h2>
+                </div>
+                <div className="cc-actions-right">
+                    <button onClick={() => onAddExpense()} className="btn-secondary" type="button">
+                        <ShoppingBag size={16} />
+                        <span>Kart Harcaması Ekle</span>
+                    </button>
+                    <button onClick={onAddCard} className="btn-primary" type="button">
+                        <Plus size={16} />
+                        <span>Yeni Kart Ekle</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* Cards Carousel / Grid */}
+            {cards.length === 0 ? (
+                <div className="cc-empty-state">
+                    <div className="cc-empty-icon">
+                        <CardIcon size={36} />
+                    </div>
+                    <h3>Henüz Kredi Kartı Eklenmemiş</h3>
+                    <p>
+                        Kredi kartlarınızı tanımlayarak hesap kesim ve son ödeme tarihlerine göre
+                        taksitli ve peşin harcamalarınızın nakit akışını otomatik takip edebilirsiniz.
+                    </p>
+                    <button onClick={onAddCard} className="btn-primary" type="button">
+                        <Plus size={16} />
+                        <span>İlk Kredi Kartınızı Ekleyin</span>
+                    </button>
+                </div>
+            ) : (
+                <div className="cc-cards-grid">
+                    {cards.map(card => {
+                        const colorDef = CARD_COLORS.find(c => c.id === card.color) || CARD_COLORS[0];
+                        const usagePercent = card.credit_limit > 0
+                            ? Math.min(100, Math.round((card.current_debt / card.credit_limit) * 100))
+                            : 0;
+
+                        return (
+                            <div
+                                key={card.id}
+                                className={`visual-credit-card ${activeSelectedId === card.id ? 'selected' : ''}`}
+                                style={{
+                                    background: colorDef.bg,
+                                    borderColor: colorDef.border,
+                                }}
+                                onClick={() => setSelectedCardId(activeSelectedId === card.id ? 'all' : card.id)}
+                            >
+                                <div className="vcc-top">
+                                    <div className="vcc-bank">{card.bank_name || 'Kredi Kartı'}</div>
+                                    <div className="vcc-actions" onClick={(e) => e.stopPropagation()}>
+                                        <button
+                                            onClick={() => onEditCard(card)}
+                                            className="vcc-icon-btn"
+                                            title="Kartı Düzenle"
+                                        >
+                                            <Edit3 size={14} />
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (confirm(`"${card.name}" kartını silmek istediğinize emin misiniz?`)) {
+                                                    onDeleteCard(card.id);
+                                                }
+                                            }}
+                                            className="vcc-icon-btn vcc-delete"
+                                            title="Kartı Sil"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="vcc-chip-row">
+                                    <div className="vcc-chip" />
+                                    <span className="vcc-contactless">))))</span>
+                                </div>
+
+                                <div className="vcc-number">
+                                    •••• •••• •••• {card.last_four_digits || '••••'}
+                                </div>
+
+                                <div className="vcc-name-row">
+                                    <span className="vcc-name">{card.name}</span>
+                                    <span className="vcc-dates-info">
+                                        Kesim: {card.cutoff_day} / Vade: {card.due_day}
+                                    </span>
+                                </div>
+
+                                {/* Progress Bar of limit usage */}
+                                <div className="vcc-progress-wrap">
+                                    <div className="vcc-progress-bar">
+                                        <div
+                                            className="vcc-progress-fill"
+                                            style={{
+                                                width: `${usagePercent}%`,
+                                                backgroundColor: usagePercent > 80 ? '#f87171' : usagePercent > 50 ? '#fbbf24' : '#34d399',
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="vcc-limit-labels">
+                                        <span>Borç: {formatCurrency(card.current_debt)}</span>
+                                        <span>Limit: {formatCurrency(card.credit_limit)}</span>
+                                    </div>
+                                </div>
+
+                                {/* Next dates pills */}
+                                <div className="vcc-pills">
+                                    <span className="vcc-pill">
+                                        <Calendar size={11} /> Kesim: {formatDate(card.next_cutoff_date)}
+                                    </span>
+                                    <span className="vcc-pill due-pill">
+                                        <Calendar size={11} /> Son Ödeme: {formatDate(card.next_due_date)}
+                                    </span>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Credit Card Transactions Table / List */}
+            {cards.length > 0 && (
+                <div className="transaction-list" style={{ marginTop: '32px' }}>
+                    <div className="transaction-list-header">
+                        <div>
+                            <h2>Kredi Kartı Harcamaları & Taksitler</h2>
+                            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                {activeSelectedId === 'all'
+                                    ? 'Tüm kartlara ait vadeli taksitler ve ödemeler'
+                                    : `"${cards.find(c => c.id === activeSelectedId)?.name}" kartına ait işlemler`}
+                            </p>
+                        </div>
+
+                        {/* Filter Tabs */}
+                        <div className="cc-filter-tabs">
+                            <button
+                                className={`cc-filter-tab ${activeSelectedId === 'all' ? 'active' : ''}`}
+                                onClick={() => setSelectedCardId('all')}
+                            >
+                                Tüm Kartlar
+                            </button>
+                            {cards.map(c => (
+                                <button
+                                    key={c.id}
+                                    className={`cc-filter-tab ${activeSelectedId === c.id ? 'active' : ''}`}
+                                    onClick={() => setSelectedCardId(c.id)}
+                                >
+                                    {c.name}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {pendingCardTxns.length === 0 && completedCardTxns.length === 0 ? (
+                        <div className="transaction-empty">
+                            <p>Bu kart için kayıtlı harcama veya taksit bulunmuyor.</p>
+                            <button
+                                onClick={() => onAddExpense(activeSelectedId === 'all' ? undefined : activeSelectedId)}
+                                className="btn-secondary"
+                                style={{ marginTop: '12px' }}
+                            >
+                                <Plus size={14} />
+                                <span>Bu Karta Harcama Ekle</span>
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            {pendingCardTxns.length > 0 && (
+                                <div className="transaction-section">
+                                    <h3 className="transaction-section-title">
+                                        Ödenecek / Gelecek Taksitler ({pendingCardTxns.length})
+                                    </h3>
+                                    {pendingCardTxns.map(t => {
+                                        const card = cards.find(c => c.id === t.card_id);
+                                        return (
+                                            <div key={t.id} className="transaction-item">
+                                                <div className="transaction-item-left">
+                                                    <div className="transaction-icon expense-icon">
+                                                        <CardIcon size={18} />
+                                                    </div>
+                                                    <div className="transaction-info">
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <span className="transaction-title">{t.title}</span>
+                                                            {card && (
+                                                                <span className="cc-tag-badge">
+                                                                    {card.name}
+                                                                </span>
+                                                            )}
+                                                            {t.total_installments && t.total_installments > 1 && (
+                                                                <span className="cc-installment-badge">
+                                                                    {t.installment_no}/{t.total_installments} Taksit
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <span className="transaction-date">
+                                                            Vade (Son Ödeme): {formatDate(t.transaction_date)}
+                                                            {t.purchase_date && ` · Harcama: ${formatDate(t.purchase_date)}`}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="transaction-item-right">
+                                                    <span className="transaction-amount amount-expense">
+                                                        -{formatCurrency(t.amount)}
+                                                    </span>
+                                                    <div className="transaction-actions" style={{ opacity: 1 }}>
+                                                        <button
+                                                            onClick={() => onMarkComplete(t)}
+                                                            className="action-btn action-complete"
+                                                            title="Ödendi olarak işaretle"
+                                                        >
+                                                            <CheckCircle2 size={15} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => onEditTransaction(t)}
+                                                            className="action-btn action-edit"
+                                                            title="Düzenle"
+                                                        >
+                                                            <Edit3 size={15} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => onDeleteTransaction(t.id, t)}
+                                                            className="action-btn action-delete"
+                                                            title="Sil"
+                                                        >
+                                                            <Trash2 size={15} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {completedCardTxns.length > 0 && (
+                                <div className="transaction-section" style={{ marginTop: '20px' }}>
+                                    <h3 className="transaction-section-title completed-title">
+                                        <CheckCircle2 size={14} />
+                                        Ödenmiş Taksitler ({completedCardTxns.length})
+                                    </h3>
+                                    {completedCardTxns.map(t => {
+                                        const card = cards.find(c => c.id === t.card_id);
+                                        return (
+                                            <div key={t.id} className="transaction-item transaction-item-completed">
+                                                <div className="transaction-item-left">
+                                                    <div className="transaction-icon expense-icon">
+                                                        <CardIcon size={18} />
+                                                    </div>
+                                                    <div className="transaction-info">
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                            <span className="transaction-title">{t.title}</span>
+                                                            {card && (
+                                                                <span className="cc-tag-badge">
+                                                                    {card.name}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <span className="transaction-date">
+                                                            Ödendi: {formatDate(t.completed_date || t.transaction_date)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="transaction-item-right">
+                                                    <span className="transaction-amount amount-expense">
+                                                        -{formatCurrency(t.completed_amount != null ? t.completed_amount : t.amount)}
+                                                    </span>
+                                                    <div className="transaction-actions" style={{ opacity: 1 }}>
+                                                        <button
+                                                            onClick={() => onDeleteTransaction(t.id, t)}
+                                                            className="action-btn action-delete"
+                                                            title="Sil"
+                                                        >
+                                                            <Trash2 size={15} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}

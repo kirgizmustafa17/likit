@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
-import { Transaction } from '@/lib/types';
-import { cn, getTodayStr } from '@/lib/utils';
+import { X, CreditCard as CardIcon, Wallet, Calendar } from 'lucide-react';
+import { Transaction, CreditCard } from '@/lib/types';
+import { cn, getTodayStr, formatCurrency, formatDate } from '@/lib/utils';
+import { calculateCardCutoffAndDueDate, distributeInstallmentAmounts, calculateInstallmentDueDates } from '@/lib/creditCardUtils';
 
 interface TransactionFormProps {
     isOpen: boolean;
@@ -14,9 +15,16 @@ interface TransactionFormProps {
         transaction_date: string;
         type: 'income' | 'expense';
         is_completed: boolean;
+        card_id?: string | null;
+        purchase_date?: string | null;
+        total_installments?: number;
+        completed_date?: string | null;
+        completed_amount?: number | null;
     }) => void;
     editingTransaction?: Transaction | null;
     onUpdate?: (id: string, data: Partial<Transaction>) => void;
+    cards?: CreditCard[];
+    defaultCardId?: string;
 }
 
 export default function TransactionForm({
@@ -25,6 +33,8 @@ export default function TransactionForm({
     onSubmit,
     editingTransaction,
     onUpdate,
+    cards = [],
+    defaultCardId,
 }: TransactionFormProps) {
     const [title, setTitle] = useState('');
     const [amount, setAmount] = useState('');
@@ -32,35 +42,106 @@ export default function TransactionForm({
     const [type, setType] = useState<'income' | 'expense'>('expense');
     const [isCompleted, setIsCompleted] = useState(false);
 
+    // Credit Card specific state
+    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'credit_card'>('cash');
+    const [selectedCardId, setSelectedCardId] = useState('');
+    const [purchaseDate, setPurchaseDate] = useState('');
+    const [installments, setInstallments] = useState('1');
+
     useEffect(() => {
         if (editingTransaction) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setTitle(editingTransaction.title);
             setAmount(String(editingTransaction.amount));
             setDate(editingTransaction.transaction_date);
             setType(editingTransaction.type);
             setIsCompleted(editingTransaction.is_completed);
+
+            if (editingTransaction.card_id) {
+                setPaymentMethod('credit_card');
+                setSelectedCardId(editingTransaction.card_id);
+                setPurchaseDate(editingTransaction.purchase_date || editingTransaction.transaction_date);
+                setInstallments(String(editingTransaction.total_installments || 1));
+            } else {
+                setPaymentMethod('cash');
+                setSelectedCardId(defaultCardId || (cards[0]?.id || ''));
+                setPurchaseDate(getTodayStr());
+                setInstallments('1');
+            }
         } else {
             setTitle('');
             setAmount('');
             setDate(getTodayStr());
             setType('expense');
             setIsCompleted(false);
+            setPaymentMethod(defaultCardId ? 'credit_card' : 'cash');
+            setSelectedCardId(defaultCardId || (cards[0]?.id || ''));
+            setPurchaseDate(getTodayStr());
+            setInstallments('1');
         }
-    }, [editingTransaction, isOpen]);
+    }, [editingTransaction, isOpen, cards, defaultCardId]);
+
+    // Check if editing an existing installment in a multi-installment plan
+    const isExistingInstallment = Boolean(
+        editingTransaction &&
+        editingTransaction.card_id &&
+        editingTransaction.installment_no &&
+        editingTransaction.total_installments &&
+        editingTransaction.total_installments > 1
+    );
+
+    // When card or purchase date changes in credit_card mode, update the effective transaction_date (due date)
+    const selectedCard = cards.find(c => c.id === selectedCardId) || (cards.length > 0 ? cards[0] : undefined);
+    const parsedAmount = parseFloat(amount) || 0;
+    const parsedInstallments = Math.max(1, parseInt(installments, 10) || 1);
+
+    // Live calculation of due date and installment breakdown
+    let calculatedCutoffDate = '';
+    let calculatedDueDate = '';
+    let installmentAmounts: number[] = [];
+
+    if (paymentMethod === 'credit_card' && selectedCard && purchaseDate) {
+        const cycle = calculateCardCutoffAndDueDate(selectedCard, purchaseDate);
+        calculatedCutoffDate = cycle.cutoffDate;
+
+        if (isExistingInstallment) {
+            // For an existing installment, calculate the due date for THIS specific installment number
+            const allDueDates = calculateInstallmentDueDates(
+                selectedCard,
+                purchaseDate,
+                editingTransaction!.total_installments!
+            );
+            const installmentIdx = (editingTransaction!.installment_no || 1) - 1;
+            calculatedDueDate = allDueDates[installmentIdx] || editingTransaction!.transaction_date;
+        } else {
+            calculatedDueDate = cycle.dueDate;
+            if (parsedAmount > 0) {
+                installmentAmounts = distributeInstallmentAmounts(parsedAmount, parsedInstallments);
+            }
+        }
+    }
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!title || !amount || !date) return;
+        if (!title || !amount) return;
+
+        const isCC = type === 'expense' && paymentMethod === 'credit_card' && Boolean(selectedCard);
+        // Effective transaction date is calculated due date for credit cards, or user date for cash
+        const effectiveDate = isCC && calculatedDueDate ? calculatedDueDate : (date || getTodayStr());
 
         if (editingTransaction && onUpdate) {
             onUpdate(editingTransaction.id, {
                 title,
                 amount: parseFloat(amount),
-                transaction_date: date,
+                transaction_date: effectiveDate,
                 type,
                 is_completed: isCompleted,
+                card_id: isCC ? selectedCard?.id : null,
+                purchase_date: isCC ? purchaseDate : null,
+                installment_no: editingTransaction.installment_no || (isCC ? 1 : null),
+                total_installments: isCC ? (editingTransaction.total_installments || parsedInstallments) : 1,
                 ...(isCompleted && {
-                    completed_date: date,
+                    completed_date: effectiveDate,
                     completed_amount: parseFloat(amount),
                 }),
                 ...(!isCompleted && {
@@ -72,9 +153,14 @@ export default function TransactionForm({
             onSubmit({
                 title,
                 amount: parseFloat(amount),
-                transaction_date: date,
+                transaction_date: effectiveDate,
                 type,
                 is_completed: isCompleted,
+                card_id: isCC ? selectedCard?.id : null,
+                purchase_date: isCC ? purchaseDate : null,
+                total_installments: isCC ? parsedInstallments : 1,
+                completed_date: isCompleted ? effectiveDate : null,
+                completed_amount: isCompleted ? parseFloat(amount) : null,
             });
         }
     };
@@ -86,7 +172,7 @@ export default function TransactionForm({
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2>{editingTransaction ? 'İşlemi Düzenle' : 'Yeni İşlem'}</h2>
-                    <button onClick={onClose} className="modal-close-btn">
+                    <button onClick={onClose} className="modal-close-btn" type="button">
                         <X size={20} />
                     </button>
                 </div>
@@ -97,7 +183,7 @@ export default function TransactionForm({
                         <input
                             id="title"
                             type="text"
-                            placeholder="Örn: Market alışverişi"
+                            placeholder="Örn: Market alışverişi, Kira, Elektronik"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             required
@@ -107,7 +193,7 @@ export default function TransactionForm({
 
                     <div className="form-row">
                         <div className="form-group">
-                            <label htmlFor="amount">Tutar (₺)</label>
+                            <label htmlFor="amount">Toplam Tutar (₺)</label>
                             <input
                                 id="amount"
                                 type="number"
@@ -120,16 +206,29 @@ export default function TransactionForm({
                             />
                         </div>
 
-                        <div className="form-group">
-                            <label htmlFor="date">Tarih</label>
-                            <input
-                                id="date"
-                                type="date"
-                                value={date}
-                                onChange={(e) => setDate(e.target.value)}
-                                required
-                            />
-                        </div>
+                        {paymentMethod === 'cash' || type === 'income' ? (
+                            <div className="form-group">
+                                <label htmlFor="date">Tarih</label>
+                                <input
+                                    id="date"
+                                    type="date"
+                                    value={date}
+                                    onChange={(e) => setDate(e.target.value)}
+                                    required
+                                />
+                            </div>
+                        ) : (
+                            <div className="form-group">
+                                <label htmlFor="purchase-date">Harcama Tarihi</label>
+                                <input
+                                    id="purchase-date"
+                                    type="date"
+                                    value={purchaseDate}
+                                    onChange={(e) => setPurchaseDate(e.target.value)}
+                                    required
+                                />
+                            </div>
+                        )}
                     </div>
 
                     <div className="form-group">
@@ -138,7 +237,10 @@ export default function TransactionForm({
                             <button
                                 type="button"
                                 className={cn('type-btn', type === 'income' && 'type-btn-active-income')}
-                                onClick={() => setType('income')}
+                                onClick={() => {
+                                    setType('income');
+                                    setPaymentMethod('cash');
+                                }}
                             >
                                 Gelir
                             </button>
@@ -152,6 +254,127 @@ export default function TransactionForm({
                         </div>
                     </div>
 
+                    {/* Payment Method Selector (Only for expenses) */}
+                    {type === 'expense' && (
+                        <div className="form-group">
+                            <label>Ödeme Yöntemi</label>
+                            <div className="type-toggle">
+                                <button
+                                    type="button"
+                                    className={cn('type-btn', paymentMethod === 'cash' && 'type-btn-active-cash')}
+                                    onClick={() => setPaymentMethod('cash')}
+                                >
+                                    <Wallet size={15} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                                    Banka / Nakit
+                                </button>
+                                <button
+                                    type="button"
+                                    className={cn('type-btn', paymentMethod === 'credit_card' && 'type-btn-active-cc')}
+                                    onClick={() => setPaymentMethod('credit_card')}
+                                    disabled={cards.length === 0}
+                                    title={cards.length === 0 ? 'Önce kredi kartı eklemelisiniz' : ''}
+                                >
+                                    <CardIcon size={15} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                                    Kredi Kartı
+                                    {cards.length === 0 && ' (Kart Yok)'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Credit Card Details */}
+                    {type === 'expense' && paymentMethod === 'credit_card' && cards.length > 0 && (
+                        <div className="cc-form-details">
+                            <div className="form-row">
+                                <div className="form-group">
+                                    <label htmlFor="card-select">Kart Seçimi</label>
+                                    <select
+                                        id="card-select"
+                                        value={selectedCardId}
+                                        onChange={(e) => setSelectedCardId(e.target.value)}
+                                        className="select-input"
+                                        required
+                                    >
+                                        {cards.map(c => (
+                                            <option key={c.id} value={c.id}>
+                                                {c.name} {c.bank_name ? `(${c.bank_name})` : ''} · Kesim: {c.cutoff_day}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {isExistingInstallment ? (
+                                    <div className="form-group">
+                                        <label>Taksit Durumu</label>
+                                        <div
+                                            className="select-input"
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                opacity: 0.9,
+                                                background: 'var(--bg-glass)',
+                                                fontWeight: 600,
+                                                color: '#fbbf24',
+                                            }}
+                                        >
+                                            {editingTransaction!.installment_no} / {editingTransaction!.total_installments}. Taksit
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="form-group">
+                                        <label htmlFor="installments-select">Taksit Sayısı</label>
+                                        <select
+                                            id="installments-select"
+                                            value={installments}
+                                            onChange={(e) => setInstallments(e.target.value)}
+                                            className="select-input"
+                                        >
+                                            <option value="1">Tek Çekim (Peşin)</option>
+                                            <option value="2">2 Taksit</option>
+                                            <option value="3">3 Taksit</option>
+                                            <option value="4">4 Taksit</option>
+                                            <option value="5">5 Taksit</option>
+                                            <option value="6">6 Taksit</option>
+                                            <option value="9">9 Taksit</option>
+                                            <option value="12">12 Taksit</option>
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* CC Calculation Preview Box */}
+                            {selectedCard && calculatedDueDate && (
+                                <div className="cc-calc-preview">
+                                    <div className="cc-calc-header">
+                                        <Calendar size={14} />
+                                        <span>Ödeme & Nakit Akışı Bilgisi</span>
+                                    </div>
+                                    <div className="cc-calc-body">
+                                        <p>
+                                            <strong>Son Ödeme (Vade):</strong> {formatDate(calculatedDueDate)}
+                                            <span className="cc-calc-sub"> (Hesap kesim: {formatDate(calculatedCutoffDate)})</span>
+                                        </p>
+                                        {isExistingInstallment ? (
+                                            <p style={{ marginTop: '4px' }}>
+                                                <strong>Taksit Tutarı:</strong> {formatCurrency(parsedAmount)} ({editingTransaction!.installment_no}/{editingTransaction!.total_installments} taksit)
+                                            </p>
+                                        ) : (
+                                            parsedInstallments > 1 && installmentAmounts.length > 0 && (
+                                                <p style={{ marginTop: '4px' }}>
+                                                    <strong>Taksit Tutarı:</strong> {parsedInstallments} x {formatCurrency(installmentAmounts[0])} / ay
+                                                </p>
+                                            )
+                                        )}
+                                        <p className="cc-calc-hint">
+                                            Bu harcama nakit akışı grafiğinize ve bakiyenize harcama gününde değil,
+                                            kart ekstrenizin <strong>son ödeme tarihinde</strong> yansıtılacaktır.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <div className="form-group">
                         <label className="checkbox-label">
                             <input
@@ -159,7 +382,7 @@ export default function TransactionForm({
                                 checked={isCompleted}
                                 onChange={(e) => setIsCompleted(e.target.checked)}
                             />
-                            <span>Gerçekleşti (Yapıldı)</span>
+                            <span>Gerçekleşti (Ödendi / Hesaptan Çıktı)</span>
                         </label>
                     </div>
 

@@ -12,15 +12,20 @@ import {
 } from 'recharts';
 import { DailyBalance } from '@/lib/types';
 import { formatCurrency, getNow } from '@/lib/utils';
-import { format, parseISO, isToday } from 'date-fns';
-import { tr } from 'date-fns/locale';
+import { format } from 'date-fns';
 
 interface CashFlowChartProps {
     data: DailyBalance[];
     periodLabel: string;
 }
 
-function CustomTooltip({ active, payload, label }: any) {
+interface CustomTooltipProps {
+    active?: boolean;
+    payload?: Array<{ value: number }>;
+    label?: string;
+}
+
+function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
     if (active && payload && payload.length) {
         const value = payload[0].value;
         return (
