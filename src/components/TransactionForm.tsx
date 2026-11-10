@@ -81,6 +81,18 @@ export default function TransactionForm({
         }
     }, [editingTransaction, isOpen, cards, defaultCardId]);
 
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isOpen) {
+                onClose();
+            }
+        };
+        if (isOpen) {
+            window.addEventListener('keydown', handleKeyDown);
+        }
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, onClose]);
+
     // Check if editing an existing installment in a multi-installment plan
     const isExistingInstallment = Boolean(
         editingTransaction &&

@@ -76,7 +76,8 @@ export default function TransactionList({
                                 className={`cc-filter-tab ${filterMethod === c.id ? 'active' : ''}`}
                                 onClick={() => setFilterMethod(c.id)}
                             >
-                                💳 {c.name}
+                                <CardIcon size={13} style={{ display: 'inline-block', marginRight: '5px', verticalAlign: '-1px' }} />
+                                {c.name}
                             </button>
                         ))}
                     </div>

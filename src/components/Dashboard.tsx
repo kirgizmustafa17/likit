@@ -320,18 +320,16 @@ export default function Dashboard() {
                             <span>Yeni İşlem</span>
                         </button>
                     ) : (
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <button
-                                onClick={() => {
-                                    setEditingCard(null);
-                                    setIsCardModalOpen(true);
-                                }}
-                                className="btn-add"
-                            >
-                                <Plus size={20} />
-                                <span>Yeni Kart</span>
-                            </button>
-                        </div>
+                        <button
+                            onClick={() => {
+                                setEditingCard(null);
+                                setIsCardModalOpen(true);
+                            }}
+                            className="btn-add"
+                        >
+                            <Plus size={20} />
+                            <span>Yeni Kart</span>
+                        </button>
                     )}
                 </div>
             </header>
