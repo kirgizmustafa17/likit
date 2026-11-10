@@ -140,7 +140,7 @@ export default function RecurringRuleModal({
     return (
         <div className="modal-overlay" id="modal-recurring-rule" onClick={onClose}>
             <div
-                className="modal-card modal-card-wide"
+                className="modal-content modal-card-wide"
                 id="modal-recurring-dialog"
                 onClick={(e) => e.stopPropagation()}
             >
@@ -152,7 +152,7 @@ export default function RecurringRuleModal({
                         </h2>
                     </div>
                     <button
-                        className="modal-close"
+                        className="modal-close-btn"
                         id="btn-close-recurring-modal"
                         onClick={onClose}
                         type="button"
