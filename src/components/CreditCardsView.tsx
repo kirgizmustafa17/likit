@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, CreditCard as CardIcon, Edit3, Trash2, Calendar, AlertCircle, ShoppingBag, CheckCircle2 } from 'lucide-react';
+import { Plus, CreditCard as CardIcon, Edit3, Trash2, Calendar, AlertCircle, ShoppingBag, CheckCircle2, Star } from 'lucide-react';
 import { CreditCard, CreditCardSummary, Transaction } from '@/lib/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { getCardColorTheme } from '@/lib/creditCardUtils';
@@ -13,6 +13,7 @@ interface CreditCardsViewProps {
     onAddCard: () => void;
     onEditCard: (card: CreditCard) => void;
     onDeleteCard: (id: string) => void;
+    onSetDefaultCard?: (id: string) => void;
     onAddExpense: (cardId?: string) => void;
     onMarkComplete: (transaction: Transaction) => void;
     onEditTransaction: (transaction: Transaction) => void;
@@ -25,6 +26,7 @@ export default function CreditCardsView({
     onAddCard,
     onEditCard,
     onDeleteCard,
+    onSetDefaultCard,
     onAddExpense,
     onMarkComplete,
     onEditTransaction,
@@ -141,8 +143,31 @@ export default function CreditCardsView({
                                 onClick={() => setSelectedCardId(activeSelectedId === card.id ? 'all' : card.id)}
                             >
                                 <div className="vcc-top">
-                                    <div className="vcc-bank" id={`vcc-bank-${card.id}`}>{card.bank_name || 'Kredi Kartı'}</div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <div className="vcc-bank" id={`vcc-bank-${card.id}`}>{card.bank_name || 'Kredi Kartı'}</div>
+                                        {card.is_default && (
+                                            <span
+                                                id={`vcc-badge-default-${card.id}`}
+                                                className="vcc-default-badge"
+                                                title="Varsayılan Harcama Kartı"
+                                            >
+                                                <Star size={10} className="vcc-star-icon" fill="#f59e0b" color="#f59e0b" />
+                                                <span>Varsayılan</span>
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="vcc-actions" onClick={(e) => e.stopPropagation()}>
+                                        {!card.is_default && onSetDefaultCard && (
+                                            <button
+                                                id={`btn-set-default-card-${card.id}`}
+                                                onClick={() => onSetDefaultCard(card.id)}
+                                                className="vcc-icon-btn vcc-star-btn"
+                                                title="Bu kartı varsayılan harcama kartı yap"
+                                                type="button"
+                                            >
+                                                <Star size={14} />
+                                            </button>
+                                        )}
                                         <button
                                             id={`btn-edit-card-${card.id}`}
                                             onClick={() => onEditCard(card)}

@@ -14,6 +14,7 @@ import {
     addCreditCard,
     updateCreditCard,
     deleteCreditCard,
+    setDefaultCreditCard,
     addCreditCardExpense,
 } from '@/lib/actions';
 import { calculateDailyBalances, getPeriodRange, formatCurrency, getTodayStr } from '@/lib/utils';
@@ -120,10 +121,11 @@ export default function Dashboard() {
         }
         if (action === 'new-transaction') {
             setEditingTransaction(null);
-            setDefaultCardId(undefined);
+            const defaultCard = cards.find(c => c.is_default) || cards[0];
+            setDefaultCardId(defaultCard?.id);
             setIsFormOpen(true);
         }
-    }, []);
+    }, [cards]);
 
     // Calculate period range for cash flow
     const { chartStart: periodChartStart, chartEnd: periodChartEnd, label: periodLabel } = getPeriodRange(periodOffset);
@@ -289,9 +291,19 @@ export default function Dashboard() {
         }
     };
 
+    const handleSetDefaultCard = async (id: string) => {
+        try {
+            await setDefaultCreditCard(id);
+            await loadData();
+        } catch (error) {
+            console.error('Set default credit card error:', error);
+        }
+    };
+
     const handleOpenExpenseForCard = (cardId?: string) => {
         setEditingTransaction(null);
-        setDefaultCardId(cardId || (cards[0]?.id || undefined));
+        const resolvedDefault = cardId || cards.find(c => c.is_default)?.id || (cards[0]?.id || undefined);
+        setDefaultCardId(resolvedDefault);
         setIsFormOpen(true);
     };
 
@@ -342,7 +354,8 @@ export default function Dashboard() {
                             id="btn-header-add-transaction"
                             onClick={() => {
                                 setEditingTransaction(null);
-                                setDefaultCardId(undefined);
+                                const defaultCard = cards.find(c => c.is_default) || cards[0];
+                                setDefaultCardId(defaultCard?.id);
                                 setIsFormOpen(true);
                             }}
                             className="btn-add"
@@ -458,6 +471,7 @@ export default function Dashboard() {
                         setIsCardModalOpen(true);
                     }}
                     onDeleteCard={handleDeleteCard}
+                    onSetDefaultCard={handleSetDefaultCard}
                     onAddExpense={handleOpenExpenseForCard}
                     onMarkComplete={openCompleteModal}
                     onEditTransaction={openEditForm}

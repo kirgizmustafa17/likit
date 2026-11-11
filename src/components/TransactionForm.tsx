@@ -68,7 +68,8 @@ export default function TransactionForm({
                 setInstallments(String(editingTransaction.total_installments || 1));
             } else {
                 setPaymentMethod('cash');
-                setSelectedCardId(defaultCardId || (cards[0]?.id || ''));
+                const resolvedDefault = defaultCardId || cards.find(c => c.is_default)?.id || (cards[0]?.id || '');
+                setSelectedCardId(resolvedDefault);
                 setPurchaseDate(getTodayStr());
                 setInstallments('1');
             }
@@ -78,8 +79,9 @@ export default function TransactionForm({
             setDate(getTodayStr());
             setType('expense');
             setIsCompleted(false);
-            setPaymentMethod(defaultCardId ? 'credit_card' : 'cash');
-            setSelectedCardId(defaultCardId || (cards[0]?.id || ''));
+            const resolvedDefault = defaultCardId || cards.find(c => c.is_default)?.id || (cards[0]?.id || '');
+            setPaymentMethod(cards.length > 0 ? 'credit_card' : 'cash');
+            setSelectedCardId(resolvedDefault);
             setPurchaseDate(getTodayStr());
             setInstallments('1');
         }
@@ -107,7 +109,9 @@ export default function TransactionForm({
     );
 
     // When card or purchase date changes in credit_card mode, update the effective transaction_date (due date)
-    const selectedCard = cards.find(c => c.id === selectedCardId) || (cards.length > 0 ? cards[0] : undefined);
+    const selectedCard = cards.find(c => c.id === selectedCardId)
+        || cards.find(c => c.is_default)
+        || (cards.length > 0 ? cards[0] : undefined);
     const parsedInstallments = Math.max(1, parseInt(installments, 10) || 1);
 
     // Live calculation of payment due date and cutoff date
@@ -262,7 +266,15 @@ export default function TransactionForm({
                                 type="button"
                                 id="btn-tx-type-expense"
                                 className={cn('type-btn', type === 'expense' && 'type-btn-active-expense')}
-                                onClick={() => setType('expense')}
+                                onClick={() => {
+                                    setType('expense');
+                                    if (cards.length > 0) {
+                                        setPaymentMethod('credit_card');
+                                        if (!selectedCardId) {
+                                            setSelectedCardId(defaultCardId || cards.find(c => c.is_default)?.id || cards[0]?.id || '');
+                                        }
+                                    }
+                                }}
                             >
                                 Gider
                             </button>
@@ -315,9 +327,10 @@ export default function TransactionForm({
                                             const netLabel = c.card_network && c.card_network !== 'other'
                                                 ? `[${c.card_network.toUpperCase()}] `
                                                 : '';
+                                            const defaultBadge = c.is_default ? ' ⭐ (Varsayılan)' : '';
                                             return (
                                                 <option key={c.id} value={c.id}>
-                                                    {netLabel}{c.name} {c.bank_name ? `(${c.bank_name})` : ''} · Kesim: {c.cutoff_day}
+                                                    {c.is_default ? '⭐ ' : ''}{netLabel}{c.name} {c.bank_name ? `(${c.bank_name})` : ''}{defaultBadge} · Kesim: {c.cutoff_day}
                                                 </option>
                                             );
                                         })}

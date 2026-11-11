@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, CreditCard as CardIcon, Check, Sparkles } from 'lucide-react';
+import { X, CreditCard as CardIcon, Check, Sparkles, Star } from 'lucide-react';
 import { CreditCard, CardNetwork } from '@/lib/types';
 import {
     CARD_NETWORKS,
@@ -46,6 +46,7 @@ export default function CreditCardModal({
     const [creditLimit, setCreditLimit] = useState('');
     const [cutoffDay, setCutoffDay] = useState('15');
     const [color, setColor] = useState('indigo');
+    const [isDefault, setIsDefault] = useState(false);
     const [saving, setSaving] = useState(false);
     const [nameCleanSuggestion, setNameCleanSuggestion] = useState<string | null>(null);
 
@@ -58,6 +59,7 @@ export default function CreditCardModal({
             setCreditLimit(editingCard.credit_limit ? String(editingCard.credit_limit) : '0');
             setCutoffDay(String(editingCard.cutoff_day || 15));
             setColor(editingCard.color || 'indigo');
+            setIsDefault(Boolean(editingCard.is_default));
             setNameCleanSuggestion(null);
         } else {
             setName('');
@@ -67,6 +69,7 @@ export default function CreditCardModal({
             setCreditLimit('50000');
             setCutoffDay('15');
             setColor('indigo');
+            setIsDefault(false);
             setNameCleanSuggestion(null);
         }
     }, [editingCard, isOpen]);
@@ -155,6 +158,7 @@ export default function CreditCardModal({
                 due_day: autoDueDay,
                 color,
                 is_active: true,
+                is_default: isDefault,
             };
 
             if (editingCard && onUpdate) {
@@ -358,6 +362,29 @@ export default function CreditCardModal({
                                 );
                             })}
                         </div>
+                    </div>
+
+                    {/* Default Card Checkbox */}
+                    <div className="form-group" style={{ marginTop: '12px', marginBottom: '8px' }}>
+                        <label className="checkbox-label" id="label-cc-default">
+                            <input
+                                id="checkbox-cc-default"
+                                type="checkbox"
+                                checked={isDefault}
+                                onChange={(e) => setIsDefault(e.target.checked)}
+                            />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Star
+                                    size={15}
+                                    fill={isDefault ? '#f59e0b' : 'none'}
+                                    color={isDefault ? '#f59e0b' : 'var(--text-muted)'}
+                                />
+                                <span>Varsayılan Harcama Kartı Yap</span>
+                            </div>
+                        </label>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '3px', marginLeft: '26px' }}>
+                            Yeni harcama eklerken bu kart otomatik olarak seçili gelecektir.
+                        </span>
                     </div>
 
                     <button type="submit" id="btn-submit-credit-card" className="btn-primary" disabled={saving}>

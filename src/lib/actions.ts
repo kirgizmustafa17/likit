@@ -109,9 +109,35 @@ export async function getCreditCards(): Promise<CreditCard[]> {
     return (data as CreditCard[]) || [];
 }
 
+export async function setDefaultCreditCard(id: string): Promise<CreditCard> {
+    // 1. Reset all cards' is_default to false
+    await supabase
+        .from('likit_credit_cards')
+        .update({ is_default: false })
+        .neq('id', id);
+
+    // 2. Set the target card's is_default to true
+    const { data, error } = await supabase
+        .from('likit_credit_cards')
+        .update({ is_default: true })
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data as CreditCard;
+}
+
 export async function addCreditCard(
     card: Omit<CreditCard, 'id' | 'created_at'>
 ): Promise<CreditCard> {
+    if (card.is_default) {
+        await supabase
+            .from('likit_credit_cards')
+            .update({ is_default: false })
+            .neq('id', '00000000-0000-0000-0000-000000000000');
+    }
+
     const { data, error } = await supabase
         .from('likit_credit_cards')
         .insert(card)
@@ -126,6 +152,13 @@ export async function updateCreditCard(
     id: string,
     updates: Partial<Omit<CreditCard, 'id' | 'created_at'>>
 ): Promise<CreditCard> {
+    if (updates.is_default) {
+        await supabase
+            .from('likit_credit_cards')
+            .update({ is_default: false })
+            .neq('id', id);
+    }
+
     const { data, error } = await supabase
         .from('likit_credit_cards')
         .update(updates)

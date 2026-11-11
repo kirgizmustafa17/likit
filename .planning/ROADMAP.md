@@ -1,27 +1,27 @@
-# Roadmap: Milestone v1.4 Card Network Badges & Dynamic Card Theming
+# Roadmap: Milestone v1.5 Default Credit Card for Transactions
 
 ## Roadmap
 
-**2 phases** | **4 requirements mapped** | All covered ✓
+**2 phases** | **5 requirements mapped** | All covered ✓
 
 | # | Phase | Goal | Requirements | Success Criteria |
 |---|-------|------|--------------|------------------|
-| 1 | Database Migration, Types & Utility Helpers | Veritabanında `card_network` alanını açmak, 7 kartı taşımak, tip ve yardımcı fonksiyonları testlerle inşa etmek | NET-01, NET-02 | 2 |
-| 2 | Impeccable Badges, Card Theming & UI Integration | Vektörel ağ rozetleri üretmek, görsel kartları ve modalları dinamik renk temalarıyla donatmak | NET-03, NET-04 | 2 |
+| 1 | Database Migration, Types & Server Actions | Veritabanında `is_default` alanını açmak, Sağlam Kart'ı varsayılan yapmak, tip ve sunucu aksiyonlarını hazırlamak | DEF-01, DEF-02 | 2 |
+| 2 | Form Defaults, Card View Management & Testing | Harcama ekleme formunda varsayılan kartı seçili getirmek, kart görünümünde varsayılan rozet/butonları eklemek ve testleri tamamlamak | DEF-03, DEF-04, DEF-05 | 3 |
 
 ### Phase Details
 
-**Phase 1: Database Migration, Types & Utility Helpers**
-- **Goal:** Veritabanına `card_network` alanını eklemek, mevcut 7 kartın isimlerindeki Troy/Visa/Mastercard ibarelerini temizleyip ağlarını güncellemek, `CardNetwork` tiplerini ve isim temizleme/tema fonksiyonlarını unit testlerle güvenceye almak.
-- **Requirements:** NET-01, NET-02
+**Phase 1: Database Migration, Types & Server Actions**
+- **Goal:** Veritabanına `is_default` alanını eklemek, Sağlam Kart'ı varsayılan yapmak, `CreditCard` tipini güncellemek ve `setDefaultCreditCard` servisini yazmak.
+- **Requirements:** DEF-01, DEF-02
 - **Success criteria:**
-  1. `supabase/migrations/20260205000002_add_card_network.sql` ve Supabase live DB üzerinde `card_network` kolonu açılmış ve 7 kart güncellenmiş olmalı.
-  2. `tests/cardNetwork.test.ts` ile `detectCardNetwork`, `cleanCardName` ve tema fonksiyonları %100 test edilmiş olmalı.
+  1. `supabase/migrations/20260205000003_add_default_credit_card.sql` çalıştırılarak canlı veritabanında `is_default` alanı açılmış ve Sağlam Kart `is_default = true` yapılmış olmalı.
+  2. `src/lib/types.ts` ve `src/lib/actions.ts` güncellenmiş, `setDefaultCreditCard` fonksiyonu çalışır durumda olmalı.
 
-**Phase 2: Impeccable Badges, Card Theming & UI Integration**
-- **Goal:** Vektörel `CardNetworkBadge` bileşenini tasarlamak, görsel kartların sağ alt köşesinde rozeti göstermek, kart renklerini ağa göre dinamik renklendirmek, `CreditCardModal`, `CreditCardsView`, `TransactionList` ve `TransactionForm` bileşenlerine entegre etmek.
-- **Requirements:** NET-03, NET-04
+**Phase 2: Form Defaults, Card View Management & Testing**
+- **Goal:** `TransactionForm` bileşeninde varsayılan ödeme yöntemini Kredi Kartı yapmak ve varsayılan kartı otomatik seçmek; `CreditCardsView` ve `CreditCardModal` içine varsayılan kart yönetimi eklemek; testleri ve derlemeyi doğrulamak.
+- **Requirements:** DEF-03, DEF-04, DEF-05
 - **Success criteria:**
-  1. Kartların üzerinde, filtre sekmelerinde ve harcama listelerinde zarif ağ rozetleri görünmeli.
-  2. Yeni kart eklerken kart ismi yazıldığında otomatik ağ tespiti ve ağ teması uygulanmalı.
-  3. `npm test` ve `npm run build` sıfır hatayla tamamlanmalı.
+  1. Yeni harcama formunda doğrudan Kredi Kartı ve Sağlam Kart seçili gelmeli.
+  2. Kartlar görünümünde Sağlam Kart'ta `⭐ Varsayılan` rozeti, diğer kartlarda "Varsayılan Yap" butonu çalışmalı.
+  3. `tests/defaultCard.test.ts`, canlı DB testi ve `npm run build` hatasız tamamlanmalı.

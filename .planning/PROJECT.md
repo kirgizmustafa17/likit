@@ -8,18 +8,16 @@ Likit, Next.js (App Router), Supabase (PostgreSQL), Tailwind CSS ve Recharts kul
 
 Güvenilir, kesintisiz ve net bir nakit akışı takibi sunmak; hem banka/nakit işlemlerini hem de kredi kartı ekstre/taksit yükümlülüklerini tek bir bütünleşik finansal projeksiyonda doğru tarihlerle göstermek; mobil cihazlarda bağımsız bir yerel uygulama konforunda kullanılabilmek.
 
-## Current Milestone: v1.4 Card Network Badges & Dynamic Card Theming (Kart İsimlerinden Network Etiketleme ve Dinamik Kart Renkleri)
+## Current Milestone: v1.5 Default Credit Card for Transactions (Harcamalarda Varsayılan Kredi Kartı Tercihi)
 
-**Goal:** Kart isimlerinde yer alan "Troy", "Visa", "Mastercard" ibarelerinin isimden temizlenmesi, bu ibarelerin kart üzerinde ve işlem listelerinde zarif bir ödeme ağı etiketi/logosu (badge) olarak gösterilmesi ve kart renk/tema sisteminin bu ağ etiketine göre dinamik olarak yapılandırılması.
+**Goal:** Harcama ekleme işleminde varsayılan ödeme yöntemi olarak kredi kartının seçilmesi, varsayılan kredi kartı seçiminin yapılabilmesi ve başlangıçta Sağlam Kart'ın varsayılan kart olarak ayarlanması.
 
 **Target features:**
-- `likit_credit_cards` tablosuna `card_network` desteği ve mevcut 7 kartın veritabanında isimlerinin temizlenip ağlarının atanması
-- Kart ağı tespit ve isim temizleme yardımcı fonksiyonları (`detectCardNetwork`, `cleanCardName`)
-- Troy (turkuaz/marine), Mastercard (ember/obsidian) ve Visa (royal/gold) dinamik renk temaları ve gradient paletleri
-- Vektörel SVG `CardNetworkBadge` bileşeni (kart üzeri kabartma logo, işlem listesi mikro rozet, form seçim hapları)
-- `CreditCardModal` içinde akıllı otomatik ağ tespiti, otomatik isim temizleme ve ağ bazlı renk paleti seçimi
-- `CreditCardsView`, `TransactionList` ve `TransactionForm` bileşenlerinde ağ rozeti entegrasyonu
-- Kapsamlı test paketi (`tests/cardNetwork.test.ts`) ve canlı DB testi
+- `likit_credit_cards` tablosuna `is_default` kolonu eklenmesi ve canlı veritabanında "Sağlam Kart"ın varsayılan olarak atanması (`DEF-01`)
+- TypeScript tipleri ve `actions.ts` üzerinde `setDefaultCreditCard` fonksiyonunun tanımlanması (`DEF-02`)
+- `TransactionForm` bileşeninde harcama açıldığında otomatik olarak kredi kartı ve varsayılan kartın seçili gelmesi (`DEF-03`)
+- `CreditCardsView` üzerinde varsayılan kart için yıldız rozeti (`⭐ Varsayılan`), diğer kartlarda "Varsayılan Yap" butonu ve `CreditCardModal` içinde varsayılan kart seçeneği (`DEF-04`)
+- Birim ve canlı DB testleri ile doğrulama (`DEF-05`)
 
 ## Requirements
 
@@ -32,18 +30,20 @@ Güvenilir, kesintisiz ve net bir nakit akışı takibi sunmak; hem banka/nakit 
 - [x] **v1.1**: Veritabanı temizleme ve migration mimarisini sadeleştirme (`DB-01` .. `DB-04`)
 - [x] **v1.2**: Kredi kartı desteği (`CC-01` .. `CC-07`)
 - [x] **v1.3**: Android PWA & Native Mobile Experience (`PWA-01` .. `PWA-06`)
-- [x] **NET-01**: `likit_credit_cards` tablosuna `card_network` kolonu eklenmeli ve mevcut 7 kartın veritabanındaki isimleri temizlenip ağ değerleri (`troy`, `visa`, `mastercard`) ve temaları atanmalıdır.
-- [x] **NET-02**: `src/lib/types.ts` içinde `CardNetwork` tipi tanımlanmalı; `src/lib/creditCardUtils.ts` içinde `detectCardNetwork`, `cleanCardName` ve `NETWORK_THEMES` fonksiyonları geliştirilmeli ve testlerle doğrulanmalıdır.
-- [x] **NET-03**: Troy, Visa ve Mastercard için SVG bazlı `CardNetworkBadge` bileşeni geliştirilmeli; `CreditCardsView`, `TransactionList` ve `TransactionForm` bileşenlerine entegre edilmelidir.
-- [x] **NET-04**: `CreditCardModal` içinde etkileşimli ağ seçici, kart ismi yazılırken otomatik algılama/temizleme ve ağ bazlı renk paleti seçimi entegre edilmeli; tüm testler (`npm test`) ve `npm run build` hatasız tamamlanmalıdır.
+- [x] **v1.4**: Card Network Badges & Dynamic Card Theming (`NET-01` .. `NET-04`)
+- [x] **DEF-01**: `likit_credit_cards` tablosuna `is_default BOOLEAN NOT NULL DEFAULT FALSE` kolonu eklendi ve mevcut "Sağlam Kart" varsayılan (`TRUE`) olarak işaretlendi.
+- [x] **DEF-02**: `src/lib/types.ts` içinde `is_default` alanı eklendi, `src/lib/actions.ts` içine tek bir kartı varsayılan yapıp diğerlerini sıfırlayan `setDefaultCreditCard` servisi eklendi.
+- [x] **DEF-03**: `TransactionForm` yeni harcama modunda açıldığında ödeme yöntemi varsayılan olarak Kredi Kartı ve kart seçimi varsayılan kart (Sağlam Kart) olarak yapılandırıldı.
+- [x] **DEF-04**: `CreditCardsView` kart bileşeninde varsayılan rozet (`⭐ Varsayılan`) ve "Varsayılan Yap" aksiyon butonu eklendi, `CreditCardModal` içinde varsayılan kart seçeneği sunuldu.
+- [x] **DEF-05**: Tüm işlevler için birim testler (`tests/defaultCard.test.ts`), canlı DB entegrasyon testi ve `npm run build` hatasız doğrulandı.
 
 ### Active
 
-None (Tüm v1.4 gereksinimleri tamamlandı ve doğrulandı)
+None (Tüm v1.5 gereksinimleri tamamlandı ve doğrulandı)
 
 ### Out of Scope
 
-- Otomatik BIN (ilk 6 hane) sorgulama API entegrasyonu (kullanıcı yalnızca son 4 haneyi girer, kart ağı isimden veya formdaki seçimden belirlenir)
+- Kullanıcı bazlı çoklu hesap oturumu (uygulama şu anda tek kullanıcılı ve anonim anahtarlı yerel/özel kullanım modelindedir)
 
 ## Context
 
@@ -54,4 +54,4 @@ None (Tüm v1.4 gereksinimleri tamamlandı ve doğrulandı)
 - **Design System:** Impeccable Craft UI, Dark Mode Glassmorphism, Modern Financial Gradient Themes
 
 ---
-*Last updated: 2026-11-10 after completing Milestone v1.4*
+*Last updated: 2026-11-11 after completing Milestone v1.5*

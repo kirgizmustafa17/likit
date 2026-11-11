@@ -1,25 +1,25 @@
-# Milestone v1.4 Requirements: Card Network Badges & Dynamic Card Theming
+# Milestone v1.5 Requirements: Default Credit Card for Transactions
 
 ## Overview
-Kart isimlerinde yer alan "Troy", "Visa" ve "Mastercard" ibarelerinin isimden temizlenmesi, bu ibarelerin kart üzerinde ve işlem listelerinde zarif bir ödeme ağı etiketi/logosu (badge) olarak gösterilmesi ve kart renk/tema sisteminin bu ağ etiketine göre dinamik olarak yapılandırılması.
+Harcama ekleme işleminde varsayılan ödeme yöntemi olarak kredi kartının seçilmesi, varsayılan kredi kartı seçiminin yapılabilmesi ve başlangıçta Sağlam Kart'ın varsayılan kart olarak ayarlanması.
 
 ## Requirements
 
-### Phase 1: Database Migration, Types & Utility Helpers
+### Phase 1: Database Migration, Types & Server Actions
+- [x] **DEF-01**: `likit_credit_cards` tablosuna `is_default BOOLEAN NOT NULL DEFAULT FALSE` kolonu eklenmeli ve mevcut "Sağlam Kart" varsayılan (`TRUE`) olarak işaretlenmelidir.
+- [x] **DEF-02**: `src/lib/types.ts` içinde `is_default` alanı eklenmeli, `src/lib/actions.ts` içine `setDefaultCreditCard` servisi eklenmelidir.
 
-- [x] **NET-01**: `likit_credit_cards` tablosuna `card_network` kolonu eklenmeli ve mevcut 7 kartın veritabanındaki isimleri temizlenip ağ değerleri (`troy`, `visa`, `mastercard`) ve temaları atanmalıdır.
-- [x] **NET-02**: `src/lib/types.ts` içinde `CardNetwork` tipi tanımlanmalı; `src/lib/creditCardUtils.ts` içinde `detectCardNetwork`, `cleanCardName` ve `NETWORK_THEMES` fonksiyonları geliştirilmeli ve testlerle doğrulanmalıdır.
-
-### Phase 2: Impeccable Badges, Card Theming & UI Integration
-
-- [x] **NET-03**: Troy, Visa ve Mastercard için SVG bazlı `CardNetworkBadge` bileşeni geliştirilmeli; `CreditCardsView`, `TransactionList` ve `TransactionForm` bileşenlerine entegre edilmelidir.
-- [x] **NET-04**: `CreditCardModal` içinde etkileşimli ağ seçici, kart ismi yazılırken otomatik algılama/temizleme ve ağ bazlı renk paleti seçimi entegre edilmeli; tüm testler (`npm test`) ve `npm run build` hatasız tamamlanmalıdır.
+### Phase 2: Form Defaults, Card View Management & Testing
+- [x] **DEF-03**: `TransactionForm` yeni harcama modunda açıldığında ödeme yöntemi varsayılan olarak Kredi Kartı ve kart seçimi varsayılan kart olmalıdır.
+- [x] **DEF-04**: `CreditCardsView` kart bileşeninde varsayılan rozet (`⭐ Varsayılan`) ve "Varsayılan Yap" aksiyon butonu eklenmeli, `CreditCardModal` içinde varsayılan kart seçeneği sunulmalıdır.
+- [x] **DEF-05**: Tüm işlevler için birim testler (`tests/defaultCard.test.ts`), canlı DB entegrasyon testi ve `npm run build` doğrulanmalıdır.
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| NET-01 | Phase 1 | Completed |
-| NET-02 | Phase 1 | Completed |
-| NET-03 | Phase 2 | Completed |
-| NET-04 | Phase 2 | Completed |
+| DEF-01 | Phase 1 | Completed |
+| DEF-02 | Phase 1 | Completed |
+| DEF-03 | Phase 2 | Completed |
+| DEF-04 | Phase 2 | Completed |
+| DEF-05 | Phase 2 | Completed |

@@ -12,6 +12,7 @@ export interface CreditCard {
     cutoff_day: number;
     due_day: number;
     is_active: boolean;
+    is_default?: boolean;
 }
 
 export interface CreditCardSummary extends CreditCard {

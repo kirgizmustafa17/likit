@@ -14,11 +14,15 @@ CREATE TABLE IF NOT EXISTS public.likit_credit_cards (
     credit_limit NUMERIC NOT NULL DEFAULT 0,
     cutoff_day INTEGER NOT NULL CHECK (cutoff_day BETWEEN 1 AND 31),
     due_day INTEGER NOT NULL CHECK (due_day BETWEEN 1 AND 31),
-    is_active BOOLEAN NOT NULL DEFAULT TRUE
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    is_default BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE INDEX IF NOT EXISTS idx_likit_credit_cards_active 
     ON public.likit_credit_cards (is_active);
+
+CREATE INDEX IF NOT EXISTS idx_likit_credit_cards_default 
+    ON public.likit_credit_cards (is_default) WHERE is_default = TRUE;
 
 ALTER TABLE public.likit_credit_cards ENABLE ROW LEVEL SECURITY;
 
